@@ -17,6 +17,7 @@ export default function Login() {
   const [senha, setSenha] = useState('')
   const [msg, setMsg] = useState(null)
   const [ocupado, setOcupado] = useState(false)
+  const verbo = modo === 'entrar' ? 'Entrar' : 'Criar conta'
 
   const social = async (provider) => {
     setMsg(null)
@@ -50,12 +51,13 @@ export default function Login() {
         </div>
 
         <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <button type="button" style={botaoSocial} onClick={() => social('google')}>Entrar com Google</button>
-          <button type="button" style={botaoSocial} onClick={() => social('apple')}>Entrar com Apple</button>
+          {/* O primeiro login social já cria a conta — o rótulo segue o modo para deixar isso claro. */}
+          <button type="button" style={botaoSocial} onClick={() => social('google')}>{verbo} com Google</button>
+          <button type="button" style={botaoSocial} onClick={() => social('apple')}>{verbo} com Apple</button>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '6px 0' }}>
             <div style={{ flex: 1, height: '.5px', background: 'rgba(255,255,255,.14)' }} />
-            <span style={{ fontSize: 12, color: 'rgba(235,235,245,.4)' }}>ou</span>
+            <span style={{ fontSize: 12, color: 'rgba(235,235,245,.4)' }}>ou com e-mail</span>
             <div style={{ flex: 1, height: '.5px', background: 'rgba(255,255,255,.14)' }} />
           </div>
 
@@ -71,9 +73,7 @@ export default function Login() {
                 autoComplete={modo === 'entrar' ? 'current-password' : 'new-password'}
                 value={senha} onChange={(e) => setSenha(e.target.value)} placeholder="mínimo 6 caracteres" />
             </div>
-            <BotaoPrimario type="submit" disabled={ocupado}>
-              {modo === 'entrar' ? 'Entrar' : 'Criar conta'}
-            </BotaoPrimario>
+            <BotaoPrimario type="submit" disabled={ocupado}>{verbo}</BotaoPrimario>
           </form>
 
           {msg && (
