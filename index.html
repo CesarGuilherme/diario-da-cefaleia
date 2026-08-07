@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Diário da Cefaléia</title>
+  <meta name="description" content="Diário de crises de cefaleia: registre, acompanhe e descubra o gatilho.">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#0a0a13">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Cefaléia">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <style>
+    html, body { margin: 0; height: 100%; background: #0a0a13; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      color: #fff; -webkit-font-smoothing: antialiased;
+      overscroll-behavior-y: none;
+    }
+    #root { height: 100%; }
+    input::placeholder { color: rgba(235,235,245,.38); }
+    button { -webkit-tap-highlight-color: transparent; }
+    button:active { transform: scale(.98); }
+    @keyframes pulsar { 0%, 100% { opacity: 1 } 50% { opacity: .4 } }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important }
+      button:active { transform: none }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+</html>
