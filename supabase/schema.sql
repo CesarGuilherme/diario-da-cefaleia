@@ -12,7 +12,10 @@ create table crises (
   sintomas        text[] not null default '{}',
   sono_horas      numeric(3,1) not null default 8 check (sono_horas between 3 and 12),
   gatilhos        text[] not null default '{}',
-  detalhe_gatilho text not null default '',
+  -- gatilho -> itens específicos daquela crise, ex.:
+  -- {"Alimentação": ["leite","chocolate"], "Estresse": ["prova de matemática"]}
+  -- É o que permite achar o item recorrente entre crises (o "leite" em 2 de 3).
+  detalhes        jsonb not null default '{}',
   medicacao       text not null default '',
   alivio          text check (alivio in ('Não','Parcial','Total')),
   check (fim is null or fim > inicio)

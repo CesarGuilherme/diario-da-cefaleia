@@ -90,6 +90,18 @@ function Conteudo({ encerradas, compartilhar, aviso }) {
               <div style={{ height: 10, borderRadius: 999, background: 'rgba(120,120,128,.22)' }}>
                 <div style={{ width: `${g.pct}%`, height: 10, borderRadius: 999, background: g.grad, boxShadow: g.sh }} />
               </div>
+              {g.recorrentes.length > 0 && (
+                <div style={{ marginTop: 7, display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+                  <span style={{ fontSize: 11, color: 'rgba(235,235,245,.45)' }}>se repete:</span>
+                  {g.recorrentes.map((r) => (
+                    <span key={r.item} style={{
+                      padding: '3px 9px', borderRadius: 999, fontSize: 12, fontWeight: 600,
+                      color: '#c9c2fd', background: 'rgba(124,108,246,.18)',
+                      border: '.5px solid rgba(124,108,246,.35)',
+                    }}>{r.item} <span style={{ fontWeight: 400, opacity: .7 }}>{r.n} de {r.de}</span></span>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>

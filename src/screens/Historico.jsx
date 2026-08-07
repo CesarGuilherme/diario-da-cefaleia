@@ -18,12 +18,16 @@ function chipsDe(c) {
       fg: '#c9c2fd', bg: 'rgba(124,108,246,.18)', bd: '.5px solid rgba(124,108,246,.35)',
     })
   }
-  for (const g of c.gatilhos) chips.push({ label: g, ...(GATCHIP[g] ?? GATCHIP['Estresse']) })
-  if (c.detalhe_gatilho) {
-    chips.push({
-      label: `“${c.detalhe_gatilho}”`,
-      fg: 'rgba(235,235,245,.6)', bg: 'rgba(120,120,128,.14)', bd: '.5px dashed rgba(255,255,255,.2)',
-    })
+  // Cada gatilho vem seguido do seu detalhe, para a leitura ficar "Alimentação → leite · pão".
+  for (const g of c.gatilhos) {
+    chips.push({ label: g, ...(GATCHIP[g] ?? GATCHIP['Estresse']) })
+    const itens = c.detalhes?.[g] ?? []
+    if (itens.length) {
+      chips.push({
+        label: `“${itens.join(' · ')}”`,
+        fg: 'rgba(235,235,245,.6)', bg: 'rgba(120,120,128,.14)', bd: '.5px dashed rgba(255,255,255,.2)',
+      })
+    }
   }
   return chips
 }

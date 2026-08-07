@@ -45,6 +45,19 @@ Uma tabela, `crises`. **A crise em andamento é simplesmente a linha com `fim IS
 não existe um segundo conceito de "ativa" para divergir do histórico. Um índice único
 parcial garante uma crise aberta por usuário, no banco.
 
+### Detalhe por gatilho
+
+`detalhes jsonb` mapeia cada gatilho aos itens específicos daquela crise:
+
+```json
+{ "Alimentação": ["sucrilhos", "leite"], "Estresse": ["prova de matemática"] }
+```
+
+O usuário digita separado por vírgula; a quebra por vírgula dá itens limpos sem nenhuma
+heurística de linguagem. Com isso o Relatório mostra, por gatilho, o que **se repete**
+entre crises — "leite 2 de 3" — que é o ponto do campo: achar o item culpado, não guardar
+texto. A comparação ignora caixa e acento (`Leite` = `leite`) e conta uma vez por crise.
+
 ## Paridade com o iOS
 
 Igual: as 4 telas, os vocabulários, o anel de 3h, a ordem dos chips, os cálculos do relatório,

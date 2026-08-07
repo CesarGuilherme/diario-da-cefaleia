@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { fmtEyebrow, fmtHora, fmtSono } from '../format.js'
-import { INT, INTENSIDADES, LOCALIZACOES, CARATERES, SINTOMAS, GATILHOS, FORM_PADRAO } from '../tokens.js'
+import { INT, INTENSIDADES, LOCALIZACOES, CARATERES, SINTOMAS, GATILHOS, FORM_PADRAO, itensDe } from '../tokens.js'
 import { card, sectionLabel, campo, titulo, eyebrow, legenda, trilho, Segmented, Chip, BotaoPrimario } from '../ui.jsx'
 
 export default function NovaCrise({ iniciar }) {
@@ -18,8 +18,15 @@ export default function NovaCrise({ iniciar }) {
 
   const enviar = async () => {
     setOcupado(true)
+    // No formulário `detalhes` guarda o texto cru por gatilho; no banco vira lista de itens.
+    // Detalhe de gatilho desligado é descartado.
+    const detalhes = {}
+    for (const g of form.gatilhos) {
+      const itens = itensDe(form.detalhes[g])
+      if (itens.length) detalhes[g] = itens
+    }
     // O rascunho só é descartado se o servidor confirmou — falhou, o usuário não redigita.
-    if (await iniciar(form)) setForm(FORM_PADRAO)
+    if (await iniciar({ ...form, detalhes })) setForm(FORM_PADRAO)
     setOcupado(false)
   }
 
@@ -77,36 +84,44 @@ export default function NovaCrise({ iniciar }) {
           style={{ width: '100%', accentColor: '#8b7cfc', height: 30, margin: '0 0 8px', cursor: 'pointer' }} />
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {GATILHOS.map(([label, valor]) => {
+          {GATILHOS.map(([label, valor, dica]) => {
             const on = form.gatilhos.includes(valor)
             return (
-              <button key={valor} type="button" role="switch" aria-checked={on}
-                onClick={() => alterna('gatilhos', valor)}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
-                  padding: '8px 0', cursor: 'pointer', background: 'none', border: 'none',
-                  fontFamily: 'inherit', color: '#fff',
-                }}>
-                <span style={{ fontSize: 15, textAlign: 'left' }}>{label}</span>
-                <span style={{
-                  width: 48, height: 29, borderRadius: 999, padding: 2, boxSizing: 'border-box',
-                  display: 'flex', flex: 'none', transition: 'background .15s',
-                  background: on ? '#30d158' : 'rgba(120,120,128,.32)',
-                  justifyContent: on ? 'flex-end' : 'flex-start',
-                }}>
-                  <span style={{ width: 25, height: 25, borderRadius: '50%', background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,.3)' }} />
-                </span>
-              </button>
+              <div key={valor}>
+                <button type="button" role="switch" aria-checked={on}
+                  onClick={() => alterna('gatilhos', valor)}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
+                    padding: '8px 0', cursor: 'pointer', background: 'none', border: 'none',
+                    fontFamily: 'inherit', color: '#fff',
+                  }}>
+                  <span style={{ fontSize: 15, textAlign: 'left' }}>{label}</span>
+                  <span style={{
+                    width: 48, height: 29, borderRadius: 999, padding: 2, boxSizing: 'border-box',
+                    display: 'flex', flex: 'none', transition: 'background .15s',
+                    background: on ? '#30d158' : 'rgba(120,120,128,.32)',
+                    justifyContent: on ? 'flex-end' : 'flex-start',
+                  }}>
+                    <span style={{ width: 25, height: 25, borderRadius: '50%', background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,.3)' }} />
+                  </span>
+                </button>
+
+                {/* O detalhe só existe se o gatilho está ligado — nada de campo órfão. */}
+                {on && (
+                  <div style={{ padding: '0 0 10px 12px', borderLeft: '2px solid rgba(48,209,88,.35)', marginLeft: 2 }}>
+                    <input aria-label={`Detalhe de ${valor}`} placeholder={dica}
+                      style={{ ...campo, height: 40, fontSize: 14 }}
+                      value={form.detalhes[valor] ?? ''}
+                      onChange={(e) => set('detalhes', { ...form.detalhes, [valor]: e.target.value })} />
+                    <div style={{ fontSize: 11, color: 'rgba(235,235,245,.4)', marginTop: 5 }}>
+                      Separe por vírgula — é o que permite achar o item que se repete
+                    </div>
+                  </div>
+                )}
+              </div>
             )
           })}
         </div>
-
-        <label htmlFor="detalhe" style={{ ...sectionLabel, marginTop: 10, marginBottom: 8, display: 'block' }}>
-          Detalhe do gatilho
-        </label>
-        <input id="detalhe" style={campo} value={form.detalhe_gatilho}
-          onChange={(e) => set('detalhe_gatilho', e.target.value)}
-          placeholder="Ex.: Tomou leite · calor forte hoje" />
       </section>
 
       <section style={card}>

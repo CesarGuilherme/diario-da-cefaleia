@@ -3,22 +3,57 @@
 
 import { fmtDuracao, fmtDataHist, fmtHora, duracaoMin } from './format.js'
 
+// O 2º item é a chave do gatilho em `gatilhos`/`detalhes` — null para "Sono < 7h",
+// que é numérico e não tem itens.
 const DEFS = [
-  ['Sono < 7h', (c) => c.sono_horas < 7,
+  ['Sono < 7h', null,
     'linear-gradient(90deg,#6c5ce7,#8b7cfc)', '#8b7cfc', '0 2px 8px rgba(124,108,246,.5)'],
-  ['Estresse', (c) => c.gatilhos.includes('Estresse'),
+  ['Estresse', 'Estresse',
     'linear-gradient(90deg,#3f9bfd,#5ec8f8)', 'rgba(235,235,245,.8)', 'none'],
-  ['Mudança climática', (c) => c.gatilhos.includes('Mudança climática'),
+  ['Mudança climática', 'Mudança climática',
     'linear-gradient(90deg,#2fb8a6,#5ee6c8)', 'rgba(235,235,245,.8)', 'none'],
-  ['Alimentação', (c) => c.gatilhos.includes('Alimentação'),
+  ['Alimentação', 'Alimentação',
     'linear-gradient(90deg,#8e8e93,#aeaeb2)', 'rgba(235,235,245,.8)', 'none'],
 ]
+
+const presente = (gatilho) =>
+  gatilho === null ? (c) => c.sono_horas < 7 : (c) => c.gatilhos.includes(gatilho)
+
+// Compara ignorando caixa e acento, para "Leite" e "leite" contarem como o mesmo item.
+const chave = (s) => s.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+
+/**
+ * Itens que se repetem entre as crises de um gatilho — o "leite em 2 de 3".
+ * Conta uma vez por crise (repetir na mesma crise não vira recorrência).
+ */
+export function recorrentes(crises, gatilho) {
+  if (!gatilho) return []
+  const comGatilho = crises.filter(presente(gatilho))
+  const conta = new Map()
+  for (const c of comGatilho) {
+    const vistos = new Set()
+    for (const item of c.detalhes?.[gatilho] ?? []) {
+      const k = chave(item)
+      if (!k || vistos.has(k)) continue
+      vistos.add(k)
+      const e = conta.get(k) ?? { item: item.trim(), n: 0 }
+      e.n += 1
+      conta.set(k, e)
+    }
+  }
+  return [...conta.values()]
+    .filter((e) => e.n >= 2)
+    .sort((a, b) => b.n - a.n || a.item.localeCompare(b.item))
+    .map((e) => ({ ...e, de: comGatilho.length }))
+}
 
 export function analisar(crises) {
   const n = crises.length
   const gatilhos = DEFS
-    .map(([label, pred, grad, valColor, sh]) => ({
-      label, pct: Math.round((100 * crises.filter(pred).length) / n), grad, valColor, sh,
+    .map(([label, gatilho, grad, valColor, sh]) => ({
+      label, grad, valColor, sh,
+      pct: Math.round((100 * crises.filter(presente(gatilho)).length) / n),
+      recorrentes: recorrentes(crises, gatilho),
     }))
     .sort((a, b) => b.pct - a.pct)
 
@@ -48,7 +83,10 @@ export function textoRelatorio(crises) {
     `INSIGHT: ${insight}`,
     '',
     'GATILHOS:',
-    ...gatilhos.map((g) => `  ${g.label}: ${g.pct}%`),
+    ...gatilhos.flatMap((g) => [
+      `  ${g.label}: ${g.pct}%`,
+      ...g.recorrentes.map((r) => `    recorrente: ${r.item} (${r.n} de ${r.de})`),
+    ]),
     '',
     'ESTATÍSTICAS:',
     `  Frequência: ${frequencia}/mês`,

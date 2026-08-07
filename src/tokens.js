@@ -42,14 +42,20 @@ export const CARATERES = ['Pulsátil', 'Pressão']
 export const ALIVIOS = ['Não', 'Parcial', 'Total']
 export const SINTOMAS = ['Náusea', 'Vômito', 'Fotofobia', 'Fonofobia', 'Aura']
 
-// [rótulo exibido, valor gravado] — o app iOS também guarda só a chave curta.
+// [rótulo exibido, valor gravado, placeholder do detalhe].
+// O iOS guarda só a chave curta; o placeholder ensina a separar por vírgula, que é o
+// que torna os itens comparáveis entre crises sem nenhuma heurística de linguagem.
 export const GATILHOS = [
-  ['Estresse (prova, escola)', 'Estresse'],
-  ['Alimentação (pulou refeição)', 'Alimentação'],
-  ['Mudança climática', 'Mudança climática'],
+  ['Estresse (prova, escola)', 'Estresse', 'Ex.: prova, briga, apresentação'],
+  ['Alimentação (pulou refeição)', 'Alimentação', 'Ex.: leite, chocolate, queijo'],
+  ['Mudança climática', 'Mudança climática', 'Ex.: calor forte, chuva, frente fria'],
 ]
 
 export const FORM_PADRAO = {
   intensidade: 'Moderada', localizacao: 'Bilateral', carater: 'Pulsátil',
-  sintomas: [], sono_horas: 8, gatilhos: [], detalhe_gatilho: '', medicacao: '',
+  sintomas: [], sono_horas: 8, gatilhos: [], detalhes: {}, medicacao: '',
 }
+
+/** "alho, frango,, batata " -> ["alho","frango","batata"] */
+export const itensDe = (texto) =>
+  (texto ?? '').split(',').map((s) => s.trim()).filter(Boolean)
