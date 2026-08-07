@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { supabase } from './lib/supabase.js'
+import { supabase, faltaConfig } from './lib/supabase.js'
 import { useCrises } from './useCrises.js'
 import Login from './Login.jsx'
 import NovaCrise from './screens/NovaCrise.jsx'
@@ -35,9 +35,28 @@ export default function App() {
     backgroundAttachment: 'fixed',
   }
 
+  if (faltaConfig) return <div style={fundo}><ErroConfig /></div>
   if (sessao === undefined) return <div style={fundo} />
   if (!sessao) return <div style={fundo}><Login /></div>
   return <Diario userId={sessao.user.id} />
+}
+
+function ErroConfig() {
+  return (
+    <div style={{ minHeight: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 16px', boxSizing: 'border-box' }}>
+      <div style={{
+        maxWidth: 420, borderRadius: 26, padding: 22,
+        background: 'rgba(255,69,58,.12)', border: '.5px solid rgba(255,69,58,.3)',
+      }}>
+        <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>App não configurado</div>
+        <div style={{ fontSize: 14, lineHeight: 1.5, color: 'rgba(235,235,245,.7)' }}>
+          Faltam as variáveis <code>VITE_SUPABASE_URL</code> e <code>VITE_SUPABASE_ANON_KEY</code>.
+          {' '}No Vite elas são embutidas <strong>durante o build</strong> — depois de adicioná-las
+          na Vercel é preciso refazer o deploy.
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function Diario({ userId }) {
