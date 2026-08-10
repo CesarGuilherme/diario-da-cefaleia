@@ -146,7 +146,8 @@ export default function Historico({ crises, carregando, apagar, atualizar }) {
         <h1 style={{ ...titulo, margin: 0 }}>Histórico</h1>
       </div>
       {!carregando && n === 0 && (
-        <CardVazio titulo="Nenhuma crise registrada" sub="Use a aba Nova para registrar a primeira." />
+        // Sem citar "aba": no desktop o registro é o botão da sidebar.
+        <CardVazio titulo="Nenhuma crise registrada" sub="Registre a primeira crise para começar." />
       )}
       {crises.map((c) => (
         <CriseCard key={c.id} c={c} apagar={apagar} editar={() => setEditando(c.id)} />

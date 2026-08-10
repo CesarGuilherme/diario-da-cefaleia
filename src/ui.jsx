@@ -94,6 +94,19 @@ export function BotaoPrimario({ children, onClick, disabled, verde, type = 'butt
   )
 }
 
+/** Banner de erro, um só para os dois layouts (no desktop atravessa o grid).
+ *  Diz "dispensar" e não "toque para dispensar": no dashboard se usa mouse. */
+export function BannerErro({ erro, dispensar, style }) {
+  if (!erro) return null
+  return (
+    <div role="alert" onClick={dispensar} style={{
+      marginBottom: 14, padding: '12px 16px', borderRadius: 16, cursor: 'pointer',
+      background: 'rgba(255,69,58,.16)', border: '.5px solid rgba(255,69,58,.3)',
+      color: '#ffb5b0', fontSize: 13, ...style,
+    }}>{erro} — dispensar</div>
+  )
+}
+
 export function CardVazio({ titulo: t, sub }) {
   return (
     <div style={{ ...card, borderRadius: 24, padding: '36px 20px', textAlign: 'center' }}>

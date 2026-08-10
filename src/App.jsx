@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react'
 import { supabase, faltaConfig } from './lib/supabase.js'
 import { useCrises } from './useCrises.js'
 import { usePacientes, FormPaciente, BarraPaciente } from './Pacientes.jsx'
+import { useDesktop } from './useDesktop.js'
+import { BannerErro } from './ui.jsx'
+import Painel from './Painel.jsx'
 import Login from './Login.jsx'
 import NovaCrise from './screens/NovaCrise.jsx'
 import CriseAndamento from './screens/CriseAndamento.jsx'
@@ -60,37 +63,45 @@ function ErroConfig() {
   )
 }
 
+// A casca é a mesma nos dois tamanhos: aurora, banner de erro e os hooks de dados.
+// Só a composição interna troca — telefone empilha em abas, desktop abre o dashboard.
 function Diario({ userId }) {
-  const [tela, setTela] = useState('nova')
-  const [editando, setEditando] = useState(null) // null | 'novo' | paciente
   const pac = usePacientes(userId)
-  const paciente = pac.selecionado
-  const dados = useCrises(paciente?.id)
-  const { ativa } = dados
+  const dados = useCrises(pac.selecionado?.id)
+  const desktop = useDesktop()
   const erro = dados.erro ?? pac.erro
-  const setErro = () => { dados.setErro(null); pac.setErro(null) }
+  const dispensar = () => { dados.setErro(null); pac.setErro(null) }
 
-  // Paciente é obrigatório: sem nenhum cadastrado, o app é só o formulário.
-  const form = editando ?? (!pac.carregando && !paciente ? 'novo' : null)
-
-  const camadas = ativa ? [AURORA_ATIVA, ...AURORA] : AURORA
+  const camadas = dados.ativa ? [AURORA_ATIVA, ...AURORA] : AURORA
 
   return (
     <div style={{
       minHeight: '100%', backgroundImage: camadas.join(','),
       backgroundColor: '#0a0a13', backgroundAttachment: 'fixed',
     }}>
+      {desktop
+        ? <Painel pac={pac} dados={dados} erro={erro} dispensar={dispensar} />
+        : <Telefone pac={pac} dados={dados} erro={erro} dispensar={dispensar} />}
+    </div>
+  )
+}
+
+function Telefone({ pac, dados, erro, dispensar }) {
+  const [tela, setTela] = useState('nova')
+  const [editando, setEditando] = useState(null) // null | 'novo' | paciente
+  const paciente = pac.selecionado
+  const { ativa } = dados
+
+  // Paciente é obrigatório: sem nenhum cadastrado, o app é só o formulário.
+  const form = editando ?? (!pac.carregando && !paciente ? 'novo' : null)
+
+  return (
+    <>
       <div style={{
         maxWidth: 440, margin: '0 auto', boxSizing: 'border-box',
         padding: '60px 16px calc(150px + env(safe-area-inset-bottom))',
       }}>
-        {erro && (
-          <div role="alert" onClick={() => setErro(null)} style={{
-            marginBottom: 14, padding: '12px 16px', borderRadius: 16, cursor: 'pointer',
-            background: 'rgba(255,69,58,.16)', border: '.5px solid rgba(255,69,58,.3)',
-            color: '#ffb5b0', fontSize: 13,
-          }}>{erro} — toque para dispensar</div>
-        )}
+        <BannerErro erro={erro} dispensar={dispensar} />
 
         {form && (
           <FormPaciente
@@ -147,6 +158,6 @@ function Diario({ userId }) {
           })}
         </div>
       </nav>}
-    </div>
+    </>
   )
 }
