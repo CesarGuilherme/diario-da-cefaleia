@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase.js'
-import { analisar, textoRelatorio } from '../report.js'
+import { analisar, textoRelatorio, porMes } from '../report.js'
 import { fmtDuracao } from '../format.js'
 import { card, titulo, eyebrow, CardVazio } from '../ui.jsx'
 
@@ -17,13 +17,48 @@ function Stat({ rotulo, valor, sufixo, sub }) {
   )
 }
 
-export default function Relatorio({ encerradas, carregando }) {
+// Dias com/sem crise por mês. Barra empilhada em CSS — o mês tem no máximo 31 dias,
+// não precisa de biblioteca de gráfico pra isso.
+function DiasPorMes({ crises }) {
+  const meses = porMes(crises)
+  if (!meses.length) return null
+  return (
+    <section style={{ ...card, padding: 18 }}>
+      <h2 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 2px' }}>Dias por mês</h2>
+      <div style={{ fontSize: 13, color: 'rgba(235,235,245,.5)', marginBottom: 16 }}>
+        <span style={{ color: '#ff9f9a' }}>■</span> com crise{' · '}
+        <span style={{ color: 'rgba(235,235,245,.35)' }}>■</span> sem crise
+      </div>
+      <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
+        {meses.map((m) => (
+          <div key={m.mes} style={{ flex: '1 0 40px', textAlign: 'center' }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#ff9f9a' }}>{m.com}</div>
+            <div style={{
+              height: 110, borderRadius: 10, overflow: 'hidden', margin: '4px 0 5px',
+              background: 'rgba(120,120,128,.22)', display: 'flex', flexDirection: 'column-reverse',
+            }} title={`${m.mes}: ${m.com} com crise, ${m.sem} sem`}>
+              <div style={{
+                height: `${(100 * m.com) / m.total}%`,
+                background: 'linear-gradient(180deg,#ff6961,#ff453a)',
+                boxShadow: '0 -2px 8px rgba(255,69,58,.5)',
+              }} />
+            </div>
+            <div style={{ fontSize: 11, color: 'rgba(235,235,245,.45)' }}>{m.mes}</div>
+            <div style={{ fontSize: 11, color: 'rgba(235,235,245,.35)' }}>{m.sem} sem</div>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+export default function Relatorio({ encerradas, carregando, paciente }) {
   const [aviso, setAviso] = useState(null)
   const n = encerradas.length
   const pronto = n >= 2
 
   const compartilhar = async () => {
-    const text = textoRelatorio(encerradas)
+    const text = textoRelatorio(encerradas, paciente)
     try {
       if (navigator.share) await navigator.share({ title: 'Diário da Cefaléia', text })
       else {
@@ -106,6 +141,8 @@ function Conteudo({ encerradas, compartilhar, aviso }) {
           ))}
         </div>
       </section>
+
+      <DiasPorMes crises={encerradas} />
 
       <div style={{ display: 'flex', gap: 12 }}>
         <Stat rotulo="Frequência" valor={frequencia} sufixo="/mês" sub="média do período" />

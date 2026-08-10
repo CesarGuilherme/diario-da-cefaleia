@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { fmtDecorrido, fmtHora } from '../format.js'
-import { INT, INTENSIDADES, ALIVIOS, ALIVIO_PAL } from '../tokens.js'
-import { card, sectionLabel, legenda, Segmented, BotaoPrimario } from '../ui.jsx'
+import { INT, INTENSIDADES, ALIVIOS, ALIVIO_PAL, SINTOMAS } from '../tokens.js'
+import { card, sectionLabel, campo, legenda, Segmented, Chip, BotaoPrimario } from '../ui.jsx'
 
 const R = 104
 const VOLTA = Math.round(2 * Math.PI * R) // 653 — mesmo valor do protótipo
@@ -10,6 +10,7 @@ const SWEEP_MS = 180 * 60 * 1000          // o anel completa uma volta em 3h
 export default function CriseAndamento({ ativa, atualizar, encerrar, irPara }) {
   const [agora, setAgora] = useState(() => Date.now())
   const [alivio, setAlivio] = useState(null) // só vai pro banco ao encerrar, igual ao iOS
+  const [med, setMed] = useState(ativa.medicacao)
   const [ocupado, setOcupado] = useState(false)
 
   useEffect(() => {
@@ -63,10 +64,32 @@ export default function CriseAndamento({ ativa, atualizar, encerrar, irPara }) {
           onChange={(v) => atualizar(ativa.id, { intensidade: v })} />
       </section>
 
+      {/* Sintoma que aparece no meio da crise (a náusea que só veio depois) vai direto
+          pro banco, igual à intensidade — não existe rascunho pra perder. */}
       <section style={{ ...card, width: '100%' }}>
-        <div style={{ fontSize: 15, fontWeight: 600 }}>{ativa.medicacao || 'Sem medicação registrada'}</div>
-        <div style={{ fontSize: 13, color: 'rgba(255,255,255,.5)', marginTop: 2 }}>
-          {ativa.medicacao ? 'registrada no início da crise' : 'adicione ao encerrar, se usar'}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <span style={{ fontSize: 15, fontWeight: 600 }}>Sintomas</span>
+          <span style={{ fontSize: 13, color: 'rgba(255,255,255,.45)' }}>marque se surgir agora</span>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {SINTOMAS.map((s) => (
+            <Chip key={s} label={s} selecionado={ativa.sintomas.includes(s)}
+              onClick={() => atualizar(ativa.id, {
+                sintomas: ativa.sintomas.includes(s)
+                  ? ativa.sintomas.filter((x) => x !== s)
+                  : [...ativa.sintomas, s],
+              })} />
+          ))}
+        </div>
+      </section>
+
+      <section style={{ ...card, width: '100%' }}>
+        <label htmlFor="med-curso" style={{ ...sectionLabel, display: 'block', letterSpacing: '.06em' }}>Medicação</label>
+        <input id="med-curso" style={campo} value={med} placeholder="Ex.: Ibuprofeno 400 mg"
+          onChange={(e) => setMed(e.target.value)}
+          onBlur={() => med !== ativa.medicacao && atualizar(ativa.id, { medicacao: med })} />
+        <div style={{ fontSize: 12, color: 'rgba(255,255,255,.45)', marginTop: 6 }}>
+          Tomou algo durante a crise? Anote aqui — salva ao sair do campo.
         </div>
         <div style={{ ...sectionLabel, marginTop: 14, letterSpacing: '.06em' }}>Aliviou?</div>
         <Segmented opcoes={ALIVIOS} valor={alivio} palette={ALIVIO_PAL} onChange={setAlivio}

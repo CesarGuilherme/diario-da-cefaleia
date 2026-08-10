@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase, faltaConfig } from './lib/supabase.js'
 import { useCrises } from './useCrises.js'
+import { usePacientes, FormPaciente, BarraPaciente } from './Pacientes.jsx'
 import Login from './Login.jsx'
 import NovaCrise from './screens/NovaCrise.jsx'
 import CriseAndamento from './screens/CriseAndamento.jsx'
@@ -61,8 +62,16 @@ function ErroConfig() {
 
 function Diario({ userId }) {
   const [tela, setTela] = useState('nova')
-  const dados = useCrises(userId)
-  const { ativa, erro, setErro } = dados
+  const [editando, setEditando] = useState(null) // null | 'novo' | paciente
+  const pac = usePacientes(userId)
+  const paciente = pac.selecionado
+  const dados = useCrises(paciente?.id)
+  const { ativa } = dados
+  const erro = dados.erro ?? pac.erro
+  const setErro = () => { dados.setErro(null); pac.setErro(null) }
+
+  // Paciente é obrigatório: sem nenhum cadastrado, o app é só o formulário.
+  const form = editando ?? (!pac.carregando && !paciente ? 'novo' : null)
 
   const camadas = ativa ? [AURORA_ATIVA, ...AURORA] : AURORA
 
@@ -83,13 +92,31 @@ function Diario({ userId }) {
           }}>{erro} — toque para dispensar</div>
         )}
 
-        {tela === 'nova' && !ativa && <NovaCrise {...dados} />}
-        {tela === 'nova' && ativa && <CriseAndamento {...dados} irPara={setTela} />}
-        {tela === 'historico' && <Historico {...dados} />}
-        {tela === 'relatorio' && <Relatorio {...dados} />}
+        {form && (
+          <FormPaciente
+            key={form === 'novo' ? 'novo' : form.id}
+            inicial={form === 'novo' ? null : form}
+            primeiro={!paciente}
+            onSalvar={(campos) => (form === 'novo' ? pac.criar(campos) : pac.salvar(form.id, campos))}
+            onCancelar={paciente ? () => setEditando(null) : undefined}
+          />
+        )}
+
+        {!form && paciente && (
+          <>
+            <BarraPaciente
+              pacientes={pac.pacientes} selecionado={paciente} escolher={pac.escolher}
+              onNovo={() => setEditando('novo')} onEditar={() => setEditando(paciente)}
+            />
+            {tela === 'nova' && !ativa && <NovaCrise {...dados} />}
+            {tela === 'nova' && ativa && <CriseAndamento key={ativa.id} {...dados} irPara={setTela} />}
+            {tela === 'historico' && <Historico {...dados} />}
+            {tela === 'relatorio' && <Relatorio {...dados} paciente={paciente} />}
+          </>
+        )}
       </div>
 
-      <nav style={{
+      {!form && paciente && <nav style={{
         position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 30,
         padding: '0 20px calc(28px + env(safe-area-inset-bottom))',
         pointerEvents: 'none',
@@ -119,7 +146,7 @@ function Diario({ userId }) {
             )
           })}
         </div>
-      </nav>
+      </nav>}
     </div>
   )
 }

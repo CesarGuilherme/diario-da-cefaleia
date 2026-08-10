@@ -7,6 +7,8 @@ o browser fala direto com o Supabase e a **RLS** é a fronteira de confiança.
 ## Setup
 
 **1. Projeto no Supabase** → SQL Editor → colar `supabase/schema.sql` e rodar.
+Se o banco já existia sem pacientes, rodar `supabase/migracao-paciente.sql` em vez do schema
+(cria a tabela `pacientes` e move as crises existentes pra um "Paciente 1").
 
 **2. Providers** (Authentication → Providers): e-mail+senha, Google, Apple.
 Em Authentication → URL Configuration, adicionar a URL de produção às Redirect URLs,

@@ -8,15 +8,17 @@ import { supabase } from './lib/supabase.js'
 // em vez de espalhar Number() por todo consumidor de sono_horas.
 const norm = (r) => ({ ...r, sono_horas: Number(r.sono_horas) })
 
-export function useCrises(userId) {
+export function useCrises(pacienteId) {
   const [crises, setCrises] = useState([])
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState(null)
 
   useEffect(() => {
+    if (!pacienteId) { setCrises([]); return }
     let vivo = true
     setCarregando(true)
-    supabase.from('crises').select('*').order('inicio', { ascending: false })
+    supabase.from('crises').select('*').eq('paciente_id', pacienteId)
+      .order('inicio', { ascending: false })
       .then(({ data, error }) => {
         if (!vivo) return
         if (error) setErro(error.message)
@@ -24,15 +26,16 @@ export function useCrises(userId) {
         setCarregando(false)
       })
     return () => { vivo = false }
-  }, [userId])
+  }, [pacienteId])
 
   const iniciar = useCallback(async (form) => {
     const { data, error } = await supabase.from('crises')
-      .insert({ ...form, inicio: new Date().toISOString() }).select().single()
+      .insert({ ...form, paciente_id: pacienteId, inicio: new Date().toISOString() })
+      .select().single()
     if (error) { setErro(error.message); return false }
     setCrises((cs) => [norm(data), ...cs])
     return true
-  }, [])
+  }, [pacienteId])
 
   const atualizar = useCallback(async (id, campos) => {
     const { data, error } = await supabase.from('crises')

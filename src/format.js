@@ -33,5 +33,18 @@ export function fmtDecorrido(ms) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 }
 
+// "ago/25" — mês + ano, porque o gráfico mensal atravessa a virada do ano.
+export const fmtMes = (d) =>
+  `${semPonto(d.toLocaleDateString(PT, { month: 'short' }))}/${String(d.getFullYear()).slice(2)}`
+
+// data_nascimento ('2014-03-22') -> 11
+export function idade(iso, hoje = new Date()) {
+  if (!iso) return null
+  const [a, m, d] = iso.split('-').map(Number)
+  let anos = hoje.getFullYear() - a
+  if (hoje.getMonth() + 1 < m || (hoje.getMonth() + 1 === m && hoje.getDate() < d)) anos -= 1
+  return anos
+}
+
 export const duracaoMin = (crise) =>
   crise.fim ? Math.max(1, Math.round((new Date(crise.fim) - new Date(crise.inicio)) / 60000)) : null

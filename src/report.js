@@ -1,7 +1,7 @@
 // Toda a lógica do Relatório, pura e sem React — é a única coisa não-trivial do app,
 // e é o que test/report.test.mjs cobre. Portado do protótipo (linhas 267-282).
 
-import { fmtDuracao, fmtDataHist, fmtHora, duracaoMin } from './format.js'
+import { fmtDuracao, fmtDataHist, fmtHora, fmtMes, duracaoMin, idade } from './format.js'
 
 // O 2º item é a chave do gatilho em `gatilhos`/`detalhes` — null para "Sono < 7h",
 // que é numérico e não tem itens.
@@ -47,6 +47,39 @@ export function recorrentes(crises, gatilho) {
     .map((e) => ({ ...e, de: comGatilho.length }))
 }
 
+/**
+ * Dias com e sem crise, mês a mês, do mês da primeira crise até o mês corrente
+ * (meses vazios no meio entram com 0 — é justamente o mês bom que o médico quer ver).
+ * ponytail: conta o dia do `inicio`; crise que atravessa a meia-noite conta 1 dia só.
+ */
+export function porMes(crises, hoje = new Date()) {
+  if (!crises.length) return []
+  const dias = new Map()   // 'YYYY-MM' -> Set de dias do mês com crise
+  let primeira = null
+  for (const c of crises) {
+    const d = new Date(c.inicio)
+    if (!primeira || d < primeira) primeira = d
+    const k = `${d.getFullYear()}-${d.getMonth()}`
+    if (!dias.has(k)) dias.set(k, new Set())
+    dias.get(k).add(d.getDate())
+  }
+
+  const meses = []
+  const cur = new Date(primeira.getFullYear(), primeira.getMonth(), 1)
+  const ultimo = new Date(hoje.getFullYear(), hoje.getMonth(), 1)
+  while (cur <= ultimo) {
+    const k = `${cur.getFullYear()}-${cur.getMonth()}`
+    // Mês corrente conta só os dias já vividos, senão "sem crise" vira promessa de futuro.
+    const total = cur.getTime() === ultimo.getTime()
+      ? hoje.getDate()
+      : new Date(cur.getFullYear(), cur.getMonth() + 1, 0).getDate()
+    const com = dias.get(k)?.size ?? 0
+    meses.push({ mes: fmtMes(cur), com, sem: total - com, total })
+    cur.setMonth(cur.getMonth() + 1)
+  }
+  return meses
+}
+
 export function analisar(crises) {
   const n = crises.length
   const gatilhos = DEFS
@@ -75,10 +108,12 @@ export function analisar(crises) {
 }
 
 // Texto compartilhado com o médico. Espelha reportText em RelatorioView.swift:37-53.
-export function textoRelatorio(crises) {
+export function textoRelatorio(crises, paciente = null) {
   const { gatilhos, insight, frequencia, duracaoMedia } = analisar(crises)
+  const anos = idade(paciente?.data_nascimento)
   const linhas = [
     'Diário da Cefaléia — Relatório para o médico',
+    ...(paciente ? [`Paciente: ${paciente.nome}${anos === null ? '' : ` (${anos} anos)`}`] : []),
     '',
     `INSIGHT: ${insight}`,
     '',
@@ -91,6 +126,9 @@ export function textoRelatorio(crises) {
     'ESTATÍSTICAS:',
     `  Frequência: ${frequencia}/mês`,
     `  Duração média: ${duracaoMedia === null ? '—' : fmtDuracao(duracaoMedia)}`,
+    '',
+    'DIAS POR MÊS:',
+    ...porMes(crises).map((m) => `  ${m.mes}: ${m.com} com crise, ${m.sem} sem (de ${m.total})`),
     '',
     `CRISES (${crises.length}):`,
   ]

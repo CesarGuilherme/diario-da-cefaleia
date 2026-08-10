@@ -3,9 +3,9 @@
 // esperados são os do screenshot 04-relatorio.png.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { analisar, textoRelatorio, recorrentes } from '../src/report.js'
-import { itensDe } from '../src/tokens.js'
-import { fmtDuracao, fmtSono, fmtDataHist, fmtEyebrow } from '../src/format.js'
+import { analisar, textoRelatorio, recorrentes, porMes } from '../src/report.js'
+import { itensDe, paraForm, paraBanco } from '../src/tokens.js'
+import { fmtDuracao, fmtSono, fmtDataHist, fmtEyebrow, idade } from '../src/format.js'
 
 const c = (inicio, fim, o) => ({
   inicio, fim, sintomas: [], gatilhos: [], detalhes: {}, medicacao: '', alivio: null, ...o,
@@ -110,10 +110,73 @@ test('recorrentes aparecem no texto para o médico', () => {
   assert.match(textoRelatorio(ALIMENTACAO), /Alimentação: 100%\n {4}recorrente: leite \(2 de 3\)/)
 })
 
+test('dias com e sem crise por mês', () => {
+  // SEEDS: 23 e 27 de julho, 1 e 5 de agosto.
+  assert.deepEqual(
+    porMes(SEEDS, new Date(2025, 7, 31)).map((m) => [m.mes, m.com, m.sem, m.total]),
+    [['jul/25', 2, 29, 31], ['ago/25', 2, 29, 31]],
+  )
+})
+
+test('mês corrente conta só os dias já vividos', () => {
+  const ago = porMes(SEEDS, new Date(2025, 7, 10)).at(-1)
+  assert.deepEqual([ago.mes, ago.com, ago.sem, ago.total], ['ago/25', 2, 8, 10])
+})
+
+test('mês sem nenhuma crise entra com zero', () => {
+  const meses = porMes([SEEDS[0], { ...SEEDS[3], inicio: '2025-06-10T12:00:00Z' }], new Date(2025, 7, 31))
+  assert.deepEqual(meses.map((m) => [m.mes, m.com]), [['jun/25', 1], ['jul/25', 0], ['ago/25', 1]])
+})
+
+test('duas crises no mesmo dia contam um dia só', () => {
+  const mesmoDia = [SEEDS[0], { ...SEEDS[0], inicio: '2025-08-05T22:00:00Z' }]
+  assert.equal(porMes(mesmoDia, new Date(2025, 7, 31))[0].com, 1)
+})
+
+test('sem crise nenhuma não há meses', () => {
+  assert.deepEqual(porMes([]), [])
+})
+
+test('idade sai do nascimento (sem contar o aniversário que não chegou)', () => {
+  assert.equal(idade('2014-03-22', new Date(2026, 1, 10)), 11)
+  assert.equal(idade('2014-03-22', new Date(2026, 2, 22)), 12)
+  assert.equal(idade(null), null)
+})
+
+test('texto para o médico traz paciente e os dias por mês', () => {
+  const t = textoRelatorio(SEEDS, { nome: 'Manu', data_nascimento: '2014-03-22' })
+  assert.match(t, /^Paciente: Manu \(\d+ anos\)$/m)
+  assert.match(t, /DIAS POR MÊS:\n {2}jul\/25: 2 com crise, 29 sem \(de 31\)/)
+})
+
 test('itensDe limpa espaço e vírgula sobrando', () => {
   assert.deepEqual(itensDe(' alho, frango,, batata '), ['alho', 'frango', 'batata'])
   assert.deepEqual(itensDe(''), [])
   assert.deepEqual(itensDe(undefined), [])
+})
+
+test('editar histórico: banco -> form -> banco não perde nem inventa nada', () => {
+  const c = ALIMENTACAO[0]
+  const form = paraForm(c)
+  assert.equal(form.detalhes['Alimentação'], 'sopa, alho, frango, milho, batata')
+  const volta = paraBanco(form)
+  assert.deepEqual(volta.detalhes, c.detalhes)
+  assert.deepEqual(volta.sintomas, c.sintomas)
+  assert.equal(volta.intensidade, c.intensidade)
+  // inicio/fim/alivio não são campos do form — o update não pode sobrescrevê-los.
+  for (const k of ['inicio', 'fim', 'alivio', 'id', 'paciente_id']) assert.ok(!(k in volta), k)
+})
+
+test('editar histórico: desligar o gatilho joga o detalhe fora', () => {
+  const form = { ...paraForm(ALIMENTACAO[0]), gatilhos: [] }
+  assert.deepEqual(paraBanco(form).detalhes, {})
+})
+
+test('editar histórico: sintoma novo entra sem mexer no resto', () => {
+  const form = paraForm(SEEDS[0])
+  form.sintomas = [...form.sintomas, 'Aura']
+  assert.deepEqual(paraBanco(form).sintomas, ['Náusea', 'Fotofobia', 'Aura'])
+  assert.deepEqual(paraForm(SEEDS[0]).sintomas, ['Náusea', 'Fotofobia']) // não mutou a crise original
 })
 
 test('crises sem detalhes não quebram a análise', () => {

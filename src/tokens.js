@@ -59,3 +59,27 @@ export const FORM_PADRAO = {
 /** "alho, frango,, batata " -> ["alho","frango","batata"] */
 export const itensDe = (texto) =>
   (texto ?? '').split(',').map((s) => s.trim()).filter(Boolean)
+
+// No formulário `detalhes` é texto cru por gatilho; no banco é lista de itens.
+// As duas conversões vivem aqui juntas para não divergirem.
+
+/** Campos do form -> campos do banco. Detalhe de gatilho desligado é descartado. */
+export function paraBanco(form) {
+  const detalhes = {}
+  for (const g of form.gatilhos) {
+    const itens = itensDe(form.detalhes[g])
+    if (itens.length) detalhes[g] = itens
+  }
+  return { ...form, detalhes }
+}
+
+/** Crise do banco -> campos do form (só os editáveis; inicio/fim/alívio ficam de fora). */
+export function paraForm(c) {
+  const detalhes = {}
+  for (const [g, itens] of Object.entries(c.detalhes ?? {})) detalhes[g] = itens.join(', ')
+  return {
+    intensidade: c.intensidade, localizacao: c.localizacao, carater: c.carater,
+    sintomas: [...c.sintomas], sono_horas: c.sono_horas, gatilhos: [...c.gatilhos],
+    detalhes, medicacao: c.medicacao ?? '',
+  }
+}

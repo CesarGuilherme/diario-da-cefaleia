@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { fmtDataHist, fmtHora, fmtDuracao, fmtSono, duracaoMin } from '../format.js'
-import { INT, GATCHIP } from '../tokens.js'
-import { card, titulo, eyebrow, CardVazio } from '../ui.jsx'
+import { INT, GATCHIP, ALIVIOS, ALIVIO_PAL, paraForm, paraBanco } from '../tokens.js'
+import { card, sectionLabel, titulo, eyebrow, CardVazio, Segmented, BotaoPrimario } from '../ui.jsx'
+import CamposCrise from '../CamposCrise.jsx'
 
 const NEUTRO = { fg: 'rgba(235,235,245,.75)', bg: 'rgba(120,120,128,.2)', bd: '.5px solid transparent' }
 
@@ -10,7 +12,9 @@ function chipsDe(c) {
   const chips = [
     { label: c.intensidade, fg: m.chipFg, bg: m.chipBg, bd: m.chipBd },
     { label: `${c.localizacao} · ${c.carater}`, ...NEUTRO },
-    ...c.sintomas.slice(0, 2).map((s) => ({ label: s, ...NEUTRO })),
+    // O protótipo cortava em 2 sintomas; agora que dá pra adicionar sintoma depois,
+    // esconder o 3º faz a edição parecer que não salvou. Mostra todos.
+    ...c.sintomas.map((s) => ({ label: s, ...NEUTRO })),
   ]
   if (c.sono_horas < 7) {
     chips.push({
@@ -32,7 +36,43 @@ function chipsDe(c) {
   return chips
 }
 
-function CriseCard({ c, apagar }) {
+// Editar depois do fato: o sintoma que só foi notado no dia seguinte, o alívio que
+// veio horas depois. Mesmo formulário do registro — ponytail: `inicio`/`fim` não são
+// editáveis; abrir se alguém precisar corrigir horário errado.
+function EditarCrise({ c, atualizar, fechar }) {
+  const [form, setForm] = useState(() => paraForm(c))
+  const [alivio, setAlivio] = useState(c.alivio)
+  const [ocupado, setOcupado] = useState(false)
+
+  const salvar = async () => {
+    setOcupado(true)
+    const campos = paraBanco(form)
+    if (c.fim) campos.alivio = alivio
+    if (await atualizar(c.id, campos)) fechar()
+    else setOcupado(false)
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ ...eyebrow, padding: '0 4px' }}>editando a crise de {fmtDataHist(new Date(c.inicio))}</div>
+      <CamposCrise form={form} setForm={setForm} />
+      {c.fim && (
+        <section style={card}>
+          <div style={sectionLabel}>Aliviou?</div>
+          <Segmented opcoes={ALIVIOS} valor={alivio} palette={ALIVIO_PAL} onChange={setAlivio}
+            fontSize={14} padding="8px 0" />
+        </section>
+      )}
+      <BotaoPrimario onClick={salvar} disabled={ocupado}>Salvar alterações</BotaoPrimario>
+      <button type="button" onClick={fechar} style={{
+        background: 'none', border: 'none', fontFamily: 'inherit', padding: 8,
+        fontSize: 13, color: 'rgba(235,235,245,.45)', cursor: 'pointer',
+      }}>Cancelar</button>
+    </div>
+  )
+}
+
+function CriseCard({ c, apagar, editar }) {
   const m = INT[c.intensidade] ?? INT['Moderada']
   const inicio = new Date(c.inicio)
   const d = duracaoMin(c)
@@ -59,12 +99,14 @@ function CriseCard({ c, apagar }) {
           ) : (
             <span style={{ fontSize: 13.5, fontWeight: 600, color: '#ff6961', whiteSpace: 'nowrap' }}>Em andamento</span>
           )}
-          <button type="button" onClick={remover} aria-label={`Apagar crise de ${fmtDataHist(inicio)}`}
-            title="Apagar" style={{
-              flex: 'none', width: 28, height: 28, borderRadius: 999, cursor: 'pointer',
-              background: 'rgba(120,120,128,.2)', border: '.5px solid rgba(255,255,255,.1)',
-              color: 'rgba(235,235,245,.55)', fontSize: 13, lineHeight: 1, fontFamily: 'inherit',
-            }}>✕</button>
+          {[['✎', 'Editar', editar], ['✕', 'Apagar', remover]].map(([icone, rotulo, acao]) => (
+            <button key={rotulo} type="button" onClick={acao} title={rotulo}
+              aria-label={`${rotulo} crise de ${fmtDataHist(inicio)}`} style={{
+                flex: 'none', width: 28, height: 28, borderRadius: 999, cursor: 'pointer',
+                background: 'rgba(120,120,128,.2)', border: '.5px solid rgba(255,255,255,.1)',
+                color: 'rgba(235,235,245,.55)', fontSize: 13, lineHeight: 1, fontFamily: 'inherit',
+              }}>{icone}</button>
+          ))}
         </div>
       </div>
 
@@ -86,8 +128,15 @@ function CriseCard({ c, apagar }) {
   )
 }
 
-export default function Historico({ crises, carregando, apagar }) {
+export default function Historico({ crises, carregando, apagar, atualizar }) {
   const n = crises.length
+  const [editando, setEditando] = useState(null)
+  const crise = crises.find((c) => c.id === editando)
+
+  if (crise) {
+    return <EditarCrise key={crise.id} c={crise} atualizar={atualizar} fechar={() => setEditando(null)} />
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ padding: '4px 4px 2px' }}>
@@ -99,7 +148,9 @@ export default function Historico({ crises, carregando, apagar }) {
       {!carregando && n === 0 && (
         <CardVazio titulo="Nenhuma crise registrada" sub="Use a aba Nova para registrar a primeira." />
       )}
-      {crises.map((c) => <CriseCard key={c.id} c={c} apagar={apagar} />)}
+      {crises.map((c) => (
+        <CriseCard key={c.id} c={c} apagar={apagar} editar={() => setEditando(c.id)} />
+      ))}
     </div>
   )
 }
