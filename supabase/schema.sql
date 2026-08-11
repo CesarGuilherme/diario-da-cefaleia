@@ -43,20 +43,24 @@ alter table pacientes enable row level security;
 alter table crises enable row level security;
 
 -- As linhas mais importantes do projeto: sem elas o app vaza dados entre contas.
+-- `to authenticated` mantém o anon fora da avaliação; `(select auth.uid())` faz o
+-- Postgres resolver o uid uma vez por query em vez de uma vez por linha.
 create policy "dono" on pacientes for all
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+  to authenticated
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
 
 -- O `exists` não é zelo extra: sem ele dá para gravar uma crise no paciente de outra
 -- conta. Como `crises_uma_ativa` é um índice único (ignora RLS), uma crise aberta
 -- plantada assim trava o paciente da vítima — ela não consegue abrir crise nem enxergar
 -- a linha que a bloqueia.
 create policy "dono" on crises for all
-  using (auth.uid() = user_id)
+  to authenticated
+  using ((select auth.uid()) = user_id)
   with check (
-    auth.uid() = user_id
+    (select auth.uid()) = user_id
     and exists (
       select 1 from pacientes p
-       where p.id = paciente_id and p.user_id = auth.uid()
+       where p.id = paciente_id and p.user_id = (select auth.uid())
     )
   );
