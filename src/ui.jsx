@@ -21,7 +21,8 @@ export const trilho = {
 export const campo = {
   width: '100%', boxSizing: 'border-box', height: 44, borderRadius: 14,
   background: 'rgba(0,0,0,.28)', border: '.5px solid rgba(255,255,255,.1)',
-  padding: '0 14px', fontSize: 15, color: '#fff', fontFamily: 'inherit', outline: 'none',
+  // 16px é o mínimo: abaixo disso o iOS dá zoom no foco e não volta (vira scroll lateral).
+  padding: '0 14px', fontSize: 16, color: '#fff', fontFamily: 'inherit', outline: 'none',
 }
 
 export const titulo = { fontSize: 30, fontWeight: 700, color: '#fff', letterSpacing: '.2px' }

@@ -75,7 +75,7 @@ export default function CamposCrise({ form, setForm }) {
                 {on && (
                   <div style={{ padding: '0 0 10px 12px', borderLeft: '2px solid rgba(48,209,88,.35)', marginLeft: 2 }}>
                     <input aria-label={`Detalhe de ${valor}`} placeholder={dica}
-                      style={{ ...campo, height: 40, fontSize: 14 }}
+                      style={{ ...campo, height: 40 }}
                       value={form.detalhes[valor] ?? ''}
                       onChange={(e) => set('detalhes', { ...form.detalhes, [valor]: e.target.value })} />
                     <div style={{ fontSize: 11, color: 'rgba(235,235,245,.4)', marginTop: 5 }}>
