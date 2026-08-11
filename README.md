@@ -7,12 +7,14 @@ o browser fala direto com o Supabase e a **RLS** é a fronteira de confiança.
 ## Setup
 
 **1. Projeto no Supabase** → SQL Editor → colar `supabase/schema.sql` e rodar.
-Se o banco já existia sem pacientes, rodar `supabase/migracao-paciente.sql` em vez do schema
-(cria a tabela `pacientes` e move as crises existentes pra um "Paciente 1").
+Bancos que já existiam rodam, em vez do schema, as migrações na ordem:
+`migracao-paciente.sql` (cria `pacientes` e move as crises existentes pra um "Paciente 1")
+e depois `migracao-rls-paciente.sql` (fecha as policies — ver **Segurança**).
 
 **2. Providers** (Authentication → Providers): e-mail+senha, Google, Apple.
-Em Authentication → URL Configuration, adicionar a URL de produção às Redirect URLs,
-senão o OAuth volta para `localhost` em produção.
+Em Authentication → URL Configuration, as Redirect URLs devem ter a URL de produção
+(senão o OAuth volta para `localhost` em produção) e **só** ela mais `localhost` — a
+lista é o que impede um redirect aberto, já que o `redirectTo` vem do cliente.
 
 **3. Env** — copiar `.env.local.example` para `.env.local` e preencher com
 Project Settings → API. A `anon key` é pública por design; quem protege é a RLS.
@@ -26,6 +28,9 @@ npm run build
 ```
 
 **4. Deploy** — `vercel`, com as duas env vars `VITE_SUPABASE_*` no projeto.
+Os headers de segurança (CSP, HSTS, `nosniff`) estão em `vercel.json`. O `style-src`
+carrega `'unsafe-inline'` porque a UI inteira é estilo inline do React — tirar isso
+seria reescrever a UI em CSS.
 
 ## Estrutura
 
@@ -35,17 +40,23 @@ npm run build
 | `src/tokens.js` | cores/gradientes copiados verbatim do protótipo do handoff |
 | `src/format.js` | datas e durações pt-BR (espelha `Components.swift`) |
 | `src/useCrises.js` | leitura/escrita no Supabase |
-| `src/screens/` | as 4 telas |
-| `src/ui.jsx` | card de vidro, segmented, chip, botão |
+| `src/Pacientes.jsx` | hook dos pacientes, form e barra de troca |
+| `src/screens/` | as 4 telas do telefone |
+| `src/Painel.jsx` | o dashboard de desktop (≥1024px), com as mesmas telas em coluna |
+| `src/useDesktop.js` | o breakpoint, via `matchMedia` |
+| `src/ui.jsx` | card de vidro, segmented, chip, botão, campo |
 
 Estilos são inline, copiados do protótipo `design_handoff_diario_cefaleia/`. Não
 "aproximar" sombras e gradientes daqui — é o que mantém a paridade com o iOS.
 
 ## Modelo
 
-Uma tabela, `crises`. **A crise em andamento é simplesmente a linha com `fim IS NULL`** —
-não existe um segundo conceito de "ativa" para divergir do histórico. Um índice único
-parcial garante uma crise aberta por usuário, no banco.
+Duas tabelas: um responsável tem N `pacientes` (os filhos), e toda linha de `crises`
+pertence a um paciente. O paciente selecionado é o filtro de tudo que o app mostra.
+
+**A crise em andamento é simplesmente a linha com `fim IS NULL`** — não existe um segundo
+conceito de "ativa" para divergir do histórico. Um índice único parcial garante uma crise
+aberta **por paciente**, no banco (dois filhos podem estar em crise ao mesmo tempo).
 
 ### Detalhe por gatilho
 
@@ -60,6 +71,23 @@ heurística de linguagem. Com isso o Relatório mostra, por gatilho, o que **se 
 entre crises — "leite 2 de 3" — que é o ponto do campo: achar o item culpado, não guardar
 texto. A comparação ignora caixa e acento (`Leite` = `leite`) e conta uma vez por crise.
 
+## Segurança
+
+Não há backend: a RLS **é** a fronteira de confiança, e as policies em `schema.sql` são
+as linhas mais importantes do projeto. Duas sutilezas que não são óbvias lendo o SQL:
+
+- O `with check` de `crises` exige que o `paciente_id` seja de um paciente da própria
+  conta. Sem esse `exists`, um usuário podia gravar uma crise no paciente de outro: a
+  leitura não vazava, mas `crises_uma_ativa` é um índice único, e índice é físico —
+  ignora RLS. Uma crise aberta plantada assim travava o paciente da vítima, que não
+  conseguia abrir crise nem enxergar a linha que a bloqueava.
+- As policies são `to authenticated` e usam `(select auth.uid())`, não `auth.uid()`.
+  O `select` faz o Postgres resolver o uid uma vez por query em vez de uma vez por linha.
+
+Testar policy é rodar SQL como o usuário, não confiar na leitura: `set local role
+authenticated` + `set local request.jwt.claims` com o `sub` de um usuário real, dentro de
+uma transação com `rollback`.
+
 ## Paridade com o iOS
 
 Igual: as 4 telas, os vocabulários, o anel de 3h, a ordem dos chips, os cálculos do relatório,
@@ -68,8 +96,8 @@ compartilhar como texto.
 Diferente de propósito: apagar é um botão `✕` + `confirm()` (no iOS é long-press);
 o alívio só vai para o banco ao encerrar a crise.
 
-**Não tem** (fora de escopo por decisão): editar crise finalizada, export PDF, múltiplos
-pacientes, notificações, filtro de período, calendário, gráfico sono×crises.
+A mais que o iOS: múltiplos pacientes, edição de crise já encerrada (o sintoma que só
+foi notado no dia seguinte), dias por mês no relatório e o dashboard de desktop.
 
-⚠️ Não dá para editar uma crise já encerrada, só apagar — num diário médico, errar a
-intensidade custa o horário real do registro. É a primeira coisa a adicionar depois.
+**Não tem** (fora de escopo por decisão): export PDF, notificações, filtro de período,
+calendário, gráfico sono×crises.
