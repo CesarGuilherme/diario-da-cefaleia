@@ -47,6 +47,16 @@ create policy "dono" on pacientes for all
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
+-- O `exists` não é zelo extra: sem ele dá para gravar uma crise no paciente de outra
+-- conta. Como `crises_uma_ativa` é um índice único (ignora RLS), uma crise aberta
+-- plantada assim trava o paciente da vítima — ela não consegue abrir crise nem enxergar
+-- a linha que a bloqueia.
 create policy "dono" on crises for all
   using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+  with check (
+    auth.uid() = user_id
+    and exists (
+      select 1 from pacientes p
+       where p.id = paciente_id and p.user_id = auth.uid()
+    )
+  );
