@@ -165,44 +165,13 @@ export function CrisesPorDia({ crises, hoje }) {
   )
 }
 
-/** Botão + aviso: o estado do compartilhamento pertence ao botão, não à tela. */
-export function Compartilhar({ encerradas, paciente, url }) {
-  const [aviso, setAviso] = useState(null)
-
-  const compartilhar = async () => {
-    const text = textoRelatorio(encerradas, paciente)
-    try {
-      // Havendo link público, ele vai junto: quem recebe escolhe entre ler o texto ou abrir
-      // a página. `url` undefined é simplesmente ignorado pelo navigator.share.
-      if (navigator.share) await navigator.share({ title: 'Diário da Cefaléia', text, url })
-      else {
-        await navigator.clipboard.writeText(url ? `${text}\n\n${url}` : text)
-        setAviso('Relatório copiado para a área de transferência.')
-      }
-    } catch (e) {
-      if (e.name !== 'AbortError') setAviso('Não foi possível compartilhar.')
-    }
-  }
-
-  return (
-    <>
-      <button type="button" onClick={compartilhar} style={{
-        height: 54, borderRadius: 999, cursor: 'pointer', width: '100%', boxSizing: 'border-box',
-        background: 'rgba(120,120,128,.24)', backdropFilter: 'blur(12px) saturate(180%)',
-        border: '.5px solid rgba(255,255,255,.18)', boxShadow: 'inset 1.5px 1.5px 1px rgba(255,255,255,.15)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-        fontSize: 16, fontWeight: 700, color: '#fff', fontFamily: 'inherit',
-      }}>↑ Compartilhar com o médico</button>
-
-      {aviso && (
-        <div role="status" style={{ textAlign: 'center', fontSize: 13, color: 'rgba(235,235,245,.6)' }}>{aviso}</div>
-      )}
-    </>
-  )
-}
-
-/** Link público: um por paciente, 30 dias, revogável. Gerar de novo mata o anterior. */
-export function LinkPublico({ encerradas, paciente, onUrl }) {
+/**
+ * Compartilhar com o médico: um card só. O botão grande é sempre a ação principal — gera o
+ * link na primeira vez e depois envia. Copiar, regenerar, revogar e o relatório em texto são
+ * ações secundárias, porque só uma delas é o que se faz na consulta.
+ * Link é um por paciente, vale 30 dias, e gerar de novo mata o anterior.
+ */
+export function Compartilhar({ encerradas, paciente }) {
   const [link, setLink] = useState(null)   // null = nenhum | linha de `relatorios`
   const [ocupado, setOcupado] = useState(true)
   const [aviso, setAviso] = useState(null)
@@ -222,63 +191,99 @@ export function LinkPublico({ encerradas, paciente, onUrl }) {
   }, [paciente.id])
 
   const url = link ? `${location.origin}/r/${link.id}` : null
-  useEffect(() => { onUrl?.(url) }, [url, onUrl])
 
   const gerar = async () => {
     setOcupado(true); setAviso(null)
     const { data, error } = await supabase.from('relatorios')
       .insert({ paciente_id: paciente.id, dados: snapshotRelatorio(encerradas, paciente) })
       .select().single()
-    if (error) { setAviso(error.message); setOcupado(false); return }
+    setOcupado(false)
+    if (error) { setAviso(error.message); return null }
     // Insere antes de apagar: se a limpeza falhar sobra um link a mais, nunca nenhum.
     await supabase.from('relatorios').delete().eq('paciente_id', paciente.id).neq('id', data.id)
-    setLink(data); setOcupado(false)
+    setLink(data)
+    return `${location.origin}/r/${data.id}`
+  }
+
+  // Ação principal: sem link ainda, cria um antes de abrir o compartilhamento — o médico
+  // recebe a página, não um texto que ele teria de rolar no WhatsApp.
+  const enviar = async () => {
+    const alvo = url ?? await gerar()
+    if (!alvo) return
+    const text = `Relatório do Diário da Cefaléia — ${paciente.nome}`
+    try {
+      if (navigator.share) await navigator.share({ title: 'Diário da Cefaléia', text, url: alvo })
+      else { await navigator.clipboard.writeText(alvo); setAviso('Link copiado.') }
+    } catch (e) {
+      if (e.name !== 'AbortError') setAviso('Não foi possível compartilhar — copie o endereço acima.')
+    }
+  }
+
+  const copiar = async () => {
+    try { await navigator.clipboard.writeText(url); setAviso('Link copiado.') }
+    catch { setAviso('Não foi possível copiar — selecione o endereço acima.') }
   }
 
   const revogar = async () => {
     if (!confirm('Revogar o link? Quem já recebeu deixa de conseguir abrir.')) return
     setOcupado(true)
     const { error } = await supabase.from('relatorios').delete().eq('id', link.id)
-    if (error) setAviso(error.message)
-    else setLink(null)
     setOcupado(false)
+    if (error) setAviso(error.message)
+    else { setLink(null); setAviso(null) }
   }
 
-  const copiar = async () => {
+  // O relatório como texto continua existindo para onde link não serve (e-mail, prontuário
+  // que só aceita colar) — mas como ação secundária, não como segundo botão grande.
+  const comoTexto = async () => {
+    const text = textoRelatorio(encerradas, paciente)
     try {
-      await navigator.clipboard.writeText(url)
-      setAviso('Link copiado.')
-    } catch { setAviso('Não foi possível copiar — selecione o endereço acima.') }
+      if (navigator.share) await navigator.share({ title: 'Diário da Cefaléia', text })
+      else { await navigator.clipboard.writeText(text); setAviso('Relatório copiado como texto.') }
+    } catch (e) {
+      if (e.name !== 'AbortError') setAviso('Não foi possível compartilhar.')
+    }
   }
 
   return (
     <section style={{ ...card, padding: 18 }}>
-      <h2 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 2px' }}>Link para o médico</h2>
+      <h2 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 2px' }}>Compartilhar com o médico</h2>
       <div style={{ fontSize: 13, color: 'rgba(235,235,245,.5)', marginBottom: 14, lineHeight: 1.45 }}>
-        Uma página só de leitura com este relatório, que abre sem conta nenhuma.
-        Quem tiver o endereço vê o relatório — ele não é indexado, mas também não pede senha.
+        Uma página só de leitura com este relatório, que abre sem conta nenhuma. Quem tiver o
+        endereço vê o relatório — ele não é indexado, mas também não pede senha.
       </div>
 
-      {url ? (
+      {url && (
         <>
-          <div style={{
-            ...campoLink, wordBreak: 'break-all',
-          }}>{url}</div>
-          <div style={{ fontSize: 12, color: 'rgba(235,235,245,.45)', margin: '8px 0 12px' }}>
-            Expira em {fmtDataHist(new Date(link.expira_em))} · o relatório fica congelado como está hoje
-          </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <BotaoSecundario onClick={copiar} disabled={ocupado}>Copiar link</BotaoSecundario>
-            <BotaoSecundario onClick={gerar} disabled={ocupado}>Gerar novo</BotaoSecundario>
-            <BotaoSecundario onClick={revogar} disabled={ocupado} perigo>Revogar</BotaoSecundario>
+          <div style={{ ...campoLink, wordBreak: 'break-all' }}>{url}</div>
+          <div style={{ fontSize: 12, color: 'rgba(235,235,245,.45)', margin: '8px 0 0' }}>
+            Expira em {fmtDataHist(new Date(link.expira_em))} · congelado como o relatório está hoje
           </div>
         </>
-      ) : (
-        <BotaoSecundario onClick={gerar} disabled={ocupado}>Gerar link · vale 30 dias</BotaoSecundario>
       )}
 
+      <button type="button" onClick={enviar} disabled={ocupado} style={{
+        marginTop: 14, height: 54, borderRadius: 999, width: '100%', boxSizing: 'border-box',
+        cursor: ocupado ? 'default' : 'pointer', opacity: ocupado ? 0.5 : 1,
+        background: 'rgba(120,120,128,.24)', backdropFilter: 'blur(12px) saturate(180%)',
+        border: '.5px solid rgba(255,255,255,.18)', boxShadow: 'inset 1.5px 1.5px 1px rgba(255,255,255,.15)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+        fontSize: 16, fontWeight: 700, color: '#fff', fontFamily: 'inherit',
+      }}>↑ {url ? 'Enviar link ao médico' : 'Gerar link e enviar'}</button>
+
+      <div style={{
+        display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '2px 4px', marginTop: 12,
+      }}>
+        {url && <Secundaria onClick={copiar} disabled={ocupado}>copiar</Secundaria>}
+        {url && <Secundaria onClick={gerar} disabled={ocupado}>gerar novo</Secundaria>}
+        {url && <Secundaria onClick={revogar} disabled={ocupado} perigo>revogar</Secundaria>}
+        <Secundaria onClick={comoTexto} disabled={ocupado}>copiar como texto</Secundaria>
+      </div>
+
       {aviso && (
-        <div role="status" style={{ fontSize: 13, color: 'rgba(235,235,245,.6)', marginTop: 10 }}>{aviso}</div>
+        <div role="status" style={{
+          fontSize: 13, color: 'rgba(235,235,245,.6)', marginTop: 10, textAlign: 'center',
+        }}>{aviso}</div>
       )}
     </section>
   )
@@ -289,16 +294,14 @@ const campoLink = {
   color: 'rgba(235,235,245,.85)', display: 'flex', alignItems: 'center',
 }
 
-function BotaoSecundario({ children, onClick, disabled, perigo }) {
+/** Ação secundária: texto, não botão — é o que a mantém abaixo do botão principal. */
+function Secundaria({ children, onClick, disabled, perigo }) {
   return (
     <button type="button" onClick={onClick} disabled={disabled} style={{
-      flex: '1 1 auto', height: 42, borderRadius: 999, cursor: disabled ? 'default' : 'pointer',
-      padding: '0 16px', fontFamily: 'inherit', fontSize: 14, fontWeight: 600,
-      opacity: disabled ? 0.5 : 1, whiteSpace: 'nowrap',
-      color: perigo ? '#ff9f9a' : '#fff',
-      background: perigo ? 'rgba(255,69,58,.16)' : 'rgba(120,120,128,.24)',
-      border: `.5px solid ${perigo ? 'rgba(255,69,58,.3)' : 'rgba(255,255,255,.16)'}`,
-      boxShadow: 'inset 1px 1px 1px rgba(255,255,255,.12)',
+      background: 'none', border: 'none', fontFamily: 'inherit', padding: '6px 8px',
+      fontSize: 13, cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.5 : 1,
+      color: perigo ? 'rgba(255,159,154,.85)' : 'rgba(235,235,245,.55)',
+      textDecoration: 'underline', textUnderlineOffset: 3,
     }}>{children}</button>
   )
 }
@@ -318,7 +321,6 @@ export function SemDados() {
 }
 
 export default function Relatorio({ encerradas, carregando, paciente }) {
-  const [urlPublica, setUrlPublica] = useState(null)
   const n = encerradas.length
   const pronto = n >= MIN_CRISES
   // Sem crises `analisar` dividiria por zero — só analisa quando há o que analisar.
@@ -336,8 +338,7 @@ export default function Relatorio({ encerradas, carregando, paciente }) {
           <Gatilhos gatilhos={a.gatilhos} />
           <CrisesPorDia crises={encerradas} />
           <Estatisticas frequencia={a.frequencia} duracaoMedia={a.duracaoMedia} />
-          <LinkPublico encerradas={encerradas} paciente={paciente} onUrl={setUrlPublica} />
-          <Compartilhar encerradas={encerradas} paciente={paciente} url={urlPublica} />
+          <Compartilhar encerradas={encerradas} paciente={paciente} />
         </>
       )}
 

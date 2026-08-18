@@ -12,7 +12,7 @@ import CriseAndamento from './screens/CriseAndamento.jsx'
 import Historico from './screens/Historico.jsx'
 import {
   MIN_CRISES, CabecalhoRelatorio, SemDados, Insight, Gatilhos, Estatisticas, CrisesPorDia,
-  LinkPublico, Compartilhar,
+  Compartilhar,
 } from './screens/Relatorio.jsx'
 
 // 100vh menos o padding do grid (28px em cima e embaixo), senão o documento fica maior
@@ -109,7 +109,6 @@ function EmCurso({ ativa, abrir }) {
 }
 
 export default function Painel({ pac, dados, erro, dispensar }) {
-  const [urlPublica, setUrlPublica] = useState(null)
   const [painel, setPainel] = useState(null) // null | 'nova' | 'andamento' | 'novo-paciente' | paciente
   const { ativa, encerradas, crises, carregando } = dados
   const paciente = pac.selecionado
@@ -179,8 +178,7 @@ export default function Painel({ pac, dados, erro, dispensar }) {
                 <CrisesPorDia crises={encerradas} />
               </div>
             </div>
-            <LinkPublico encerradas={encerradas} paciente={paciente} onUrl={setUrlPublica} />
-            <Compartilhar encerradas={encerradas} paciente={paciente} url={urlPublica} />
+            <Compartilhar encerradas={encerradas} paciente={paciente} />
           </>
         )}
       </main>
