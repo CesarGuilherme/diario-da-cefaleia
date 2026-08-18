@@ -134,6 +134,24 @@ export function analisar(crises) {
   return { gatilhos, insight, frequencia, duracaoMedia }
 }
 
+// O que vai no link público é uma cópia congelada, não um espelho: o médico vê daqui a
+// 20 dias o mesmo relatório que você mandou, e crise nova não vaza para um link já enviado.
+// Sem ids e sem data_nascimento — só o que o relatório desenha.
+export function snapshotRelatorio(encerradas, paciente, hoje = new Date()) {
+  return {
+    versao: 1,
+    gerado_em: hoje.toISOString(),
+    paciente: { nome: paciente.nome, idade: idade(paciente.data_nascimento, hoje) },
+    crises: encerradas.map((c) => ({
+      inicio: c.inicio, fim: c.fim,
+      intensidade: c.intensidade, localizacao: c.localizacao, carater: c.carater,
+      sintomas: c.sintomas, sono_horas: c.sono_horas,
+      gatilhos: c.gatilhos, detalhes: c.detalhes,
+      medicacao: c.medicacao, alivio: c.alivio,
+    })),
+  }
+}
+
 // Texto compartilhado com o médico. Espelha reportText em RelatorioView.swift:37-53.
 export function textoRelatorio(crises, paciente = null) {
   const { gatilhos, insight, frequencia, duracaoMedia } = analisar(crises)

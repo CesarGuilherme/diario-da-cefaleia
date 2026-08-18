@@ -3,7 +3,7 @@
 // esperados são os do screenshot 04-relatorio.png.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { analisar, textoRelatorio, recorrentes, porMes, porDia } from '../src/report.js'
+import { analisar, textoRelatorio, recorrentes, porMes, porDia, snapshotRelatorio } from '../src/report.js'
 import { itensDe, paraForm, paraBanco } from '../src/tokens.js'
 import { fmtDuracao, fmtSono, fmtDataHist, fmtEyebrow, idade } from '../src/format.js'
 
@@ -226,4 +226,31 @@ test('texto compartilhado traz insight, gatilhos e as crises', () => {
   assert.match(t, /Duração média: 1h57/)
   assert.match(t, /CRISES \(4\):/)
   assert.match(t, /℞ Ibuprofeno 400 mg · alívio parcial/)
+})
+
+// O snapshot é o que vai para o link público — o que ele não carrega importa tanto quanto
+// o que carrega.
+const PACIENTE = { id: 'p1', user_id: 'u1', nome: 'Noah', data_nascimento: '2014-03-22', criado_em: 'x' }
+const LINHAS = SEEDS.map((c, i) => ({ ...c, id: `c${i}`, user_id: 'u1', paciente_id: 'p1' }))
+
+test('snapshot não leva id, user_id, paciente_id nem data de nascimento', () => {
+  const snap = snapshotRelatorio(LINHAS, PACIENTE, new Date(2026, 1, 10))
+  const texto = JSON.stringify(snap)
+  for (const proibido of ['user_id', 'paciente_id', '"id"', 'data_nascimento', '2014-03-22']) {
+    assert.equal(texto.includes(proibido), false, `snapshot vazou ${proibido}`)
+  }
+  assert.deepEqual(snap.paciente, { nome: 'Noah', idade: 11 })
+  assert.equal(snap.gerado_em, new Date(2026, 1, 10).toISOString())
+})
+
+test('snapshot alimenta o mesmo relatório da tela', () => {
+  const snap = snapshotRelatorio(LINHAS, PACIENTE, new Date(2025, 7, 31))
+  assert.deepEqual(
+    analisar(snap.crises).gatilhos.map((g) => [g.label, g.pct]),
+    analisar(SEEDS).gatilhos.map((g) => [g.label, g.pct]),
+  )
+  assert.deepEqual(
+    porDia(snap.crises, new Date(2025, 7, 31)).map((d) => d.n),
+    porDia(SEEDS, new Date(2025, 7, 31)).map((d) => d.n),
+  )
 })

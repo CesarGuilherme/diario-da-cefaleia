@@ -83,7 +83,9 @@ function EditarCrise({ c, atualizar, fechar }) {
   )
 }
 
-function CriseCard({ c, apagar, editar }) {
+// Exportado para a página pública montar os mesmos cards. Sem `editar`/`apagar` ele
+// vira só leitura — nada de um segundo card que diverge deste.
+export function CriseCard({ c, apagar, editar }) {
   const m = INT[c.intensidade] ?? INT['Moderada']
   const inicio = new Date(c.inicio)
   const d = duracaoMin(c)
@@ -110,7 +112,7 @@ function CriseCard({ c, apagar, editar }) {
           ) : (
             <span style={{ fontSize: 13.5, fontWeight: 600, color: '#ff6961', whiteSpace: 'nowrap' }}>Em andamento</span>
           )}
-          {[['✎', 'Editar', editar], ['✕', 'Apagar', remover]].map(([icone, rotulo, acao]) => (
+          {editar && [['✎', 'Editar', editar], ['✕', 'Apagar', remover]].map(([icone, rotulo, acao]) => (
             <button key={rotulo} type="button" onClick={acao} title={rotulo}
               aria-label={`${rotulo} crise de ${fmtDataHist(inicio)}`} style={{
                 flex: 'none', width: 28, height: 28, borderRadius: 999, cursor: 'pointer',

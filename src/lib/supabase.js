@@ -14,3 +14,13 @@ export const supabase = createClient(
   url || 'https://fachada.supabase.co',
   anonKey || 'fachada',
 )
+
+// Cliente da página pública: nada de sessão. Sem `persistSession: false` ele restauraria a
+// sessão do dono no localStorage e as queries sairiam autenticadas — o relatório abriria
+// para você e daria vazio para o médico. `detectSessionInUrl: false` evita que o token da
+// URL do relatório seja confundido com um callback de OAuth.
+export const supabaseAnon = createClient(
+  url || 'https://fachada.supabase.co',
+  anonKey || 'fachada',
+  { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } },
+)

@@ -8,8 +8,9 @@ o browser fala direto com o Supabase e a **RLS** é a fronteira de confiança.
 
 **1. Projeto no Supabase** → SQL Editor → colar `supabase/schema.sql` e rodar.
 Bancos que já existiam rodam, em vez do schema, as migrações na ordem:
-`migracao-paciente.sql` (cria `pacientes` e move as crises existentes pra um "Paciente 1")
-e depois `migracao-rls-paciente.sql` (fecha as policies — ver **Segurança**).
+`migracao-paciente.sql` (cria `pacientes` e move as crises existentes pra um "Paciente 1"),
+`migracao-rls-paciente.sql` (fecha as policies — ver **Segurança**) e
+`migracao-relatorio-publico.sql` (a tabela `relatorios` e a função do link do médico).
 
 **2. Providers** (Authentication → Providers): e-mail+senha, Google, Apple.
 Em Authentication → URL Configuration, as Redirect URLs devem ter a URL de produção
@@ -40,6 +41,7 @@ seria reescrever a UI em CSS.
 | `src/tokens.js` | cores/gradientes copiados verbatim do protótipo do handoff |
 | `src/format.js` | datas e durações pt-BR (espelha `Components.swift`) |
 | `src/useCrises.js` | leitura/escrita no Supabase |
+| `src/Publico.jsx` | o relatório em `/r/<token>`, aberto por quem não tem conta |
 | `src/Pacientes.jsx` | hook dos pacientes, form e barra de troca |
 | `src/screens/` | as 4 telas do telefone |
 | `src/Painel.jsx` | o dashboard de desktop (≥1024px), com as mesmas telas em coluna |
@@ -91,13 +93,35 @@ uma transação com `rollback`.
 ## Paridade com o iOS
 
 Igual: as 4 telas, os vocabulários, o anel de 3h, a ordem dos chips, os cálculos do relatório,
-compartilhar como texto.
+o gráfico de crises por dia, compartilhar como texto.
 
 Diferente de propósito: apagar é um botão `✕` + `confirm()` (no iOS é long-press);
 o alívio só vai para o banco ao encerrar a crise.
 
 A mais que o iOS: múltiplos pacientes, edição de crise já encerrada (o sintoma que só
-foi notado no dia seguinte), dias por mês no relatório e o dashboard de desktop.
+foi notado no dia seguinte) e o dashboard de desktop. O painel "dias por mês" saiu da tela
+para o relatório ficar igual ao do iOS — `porMes` continua no texto do médico, onde o iOS
+também o tem.
+
+## Relatório público
+
+"Gerar link" grava em `relatorios` um **snapshot** do relatório (`snapshotRelatorio`, em
+`report.js`) e devolve `/r/<id do snapshot>`. O id é o token: uuid v4, 122 bits, e não existe
+outra coluna para adivinhar. É um por paciente — gerar de novo apaga o anterior — e vale 30 dias.
+
+Snapshot, não espelho: o médico vê daqui a três semanas o mesmo relatório que você mandou, e
+crise registrada depois não vaza para um link já enviado. O `gerado_em` também é o "hoje" que
+alimenta o gráfico, para a linha não esticar com o relógio de quem abre.
+
+O visitante **não** ganha policy nenhuma. Ele chama `relatorio_publico(token)`, uma função
+`security definer` que devolve só a linha daquele token não expirado — é isso que impede listar
+a tabela com a anon key (com `select`, o anon vê 0 linhas). Token errado e token vencido dão o
+mesmo `null`, então a página não conta se o link existe. O `Publico.jsx` usa um cliente Supabase
+separado, sem `persistSession`: senão ele restauraria a sessão do dono e o teste passaria na sua
+máquina e falharia na do médico.
+
+A rota vem de um `rewrite` no `vercel.json`, junto com um `X-Robots-Tag: noindex` — o link não
+pede senha, então pelo menos não cai em buscador.
 
 **Não tem** (fora de escopo por decisão): export PDF, notificações, filtro de período,
 calendário, gráfico sono×crises.

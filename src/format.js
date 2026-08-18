@@ -33,6 +33,10 @@ export function fmtDecorrido(ms) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 }
 
+// "10 ago" — rótulo curto do eixo do gráfico diário.
+export const fmtDiaEixo = (d) =>
+  semPonto(d.toLocaleDateString(PT, { day: 'numeric', month: 'short' })).replace(' de ', ' ')
+
 // "ago/25" — mês + ano, porque o gráfico mensal atravessa a virada do ano.
 export const fmtMes = (d) =>
   `${semPonto(d.toLocaleDateString(PT, { month: 'short' }))}/${String(d.getFullYear()).slice(2)}`
