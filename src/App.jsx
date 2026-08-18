@@ -42,7 +42,9 @@ export default function App() {
   if (faltaConfig) return <div style={fundo}><ErroConfig /></div>
   if (sessao === undefined) return <div style={fundo} />
   if (!sessao) return <div style={fundo}><Login /></div>
-  return <Diario userId={sessao.user.id} />
+  // key no uid: trocar de conta sem passar por deslogado reaproveitaria os hooks e
+  // mostraria o paciente do usuário anterior por um render (espelha .id(userId) no iOS).
+  return <Diario key={sessao.user.id} userId={sessao.user.id} />
 }
 
 function ErroConfig() {

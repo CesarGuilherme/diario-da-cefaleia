@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { fmtDataHist, fmtHora, fmtDuracao, fmtSono, duracaoMin } from '../format.js'
 import { INT, GATCHIP, ALIVIOS, ALIVIO_PAL, paraForm, paraBanco } from '../tokens.js'
 import { card, sectionLabel, titulo, eyebrow, CardVazio, Segmented, BotaoPrimario } from '../ui.jsx'
@@ -41,13 +41,24 @@ function chipsDe(c) {
 // editáveis; abrir se alguém precisar corrigir horário errado.
 function EditarCrise({ c, atualizar, fechar }) {
   const [form, setForm] = useState(() => paraForm(c))
+  // Snapshot da abertura (o key={id} garante montagem por crise): é contra ele que o diff
+  // roda. Comparar com a linha atual acusaria como "editado" o campo que mudou no servidor.
+  const inicial = useRef(paraBanco(paraForm(c))).current
   const [alivio, setAlivio] = useState(c.alivio)
+  const alivioInicial = useRef(c.alivio).current
   const [ocupado, setOcupado] = useState(false)
 
+  // Só o que o usuário mexeu vai pro banco. Mandar a linha inteira reverteria o que mudou
+  // enquanto o editor estava aberto — no desktop o overlay da crise em andamento escreve
+  // na mesma linha, ao lado deste form.
   const salvar = async () => {
-    setOcupado(true)
     const campos = paraBanco(form)
-    if (c.fim) campos.alivio = alivio
+    for (const k of Object.keys(campos)) {
+      if (JSON.stringify(campos[k]) === JSON.stringify(inicial[k])) delete campos[k]
+    }
+    if (c.fim && alivio !== alivioInicial) campos.alivio = alivio
+    if (!Object.keys(campos).length) { fechar(); return }
+    setOcupado(true)
     if (await atualizar(c.id, campos)) fechar()
     else setOcupado(false)
   }

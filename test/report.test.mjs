@@ -3,7 +3,7 @@
 // esperados são os do screenshot 04-relatorio.png.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { analisar, textoRelatorio, recorrentes, porMes } from '../src/report.js'
+import { analisar, textoRelatorio, recorrentes, porMes, porDia } from '../src/report.js'
 import { itensDe, paraForm, paraBanco } from '../src/tokens.js'
 import { fmtDuracao, fmtSono, fmtDataHist, fmtEyebrow, idade } from '../src/format.js'
 
@@ -135,6 +135,41 @@ test('duas crises no mesmo dia contam um dia só', () => {
 
 test('sem crise nenhuma não há meses', () => {
   assert.deepEqual(porMes([]), [])
+})
+
+// porDia usa a convenção oposta à de porMes: soma as crises do dia em vez de contar dias.
+// Datas locais (`new Date(a, m, d, h)`) porque o dia sai do fuso do usuário, não do UTC.
+const dia = (mes, d, hora) => new Date(2025, mes - 1, d, hora).toISOString()
+
+test('porDia: dois dias distintos', () => {
+  const dias = porDia(
+    [{ ...SEEDS[0], inicio: dia(8, 1, 10) }, { ...SEEDS[1], inicio: dia(8, 5, 14) }],
+    new Date(2025, 7, 5),
+  )
+  assert.equal(dias.at(0).n, 1)
+  assert.equal(dias.at(-1).n, 1)
+  assert.equal(dias.reduce((a, d) => a + d.n, 0), 2)
+})
+
+test('porDia: duas crises no mesmo dia somam', () => {
+  const dias = porDia(
+    [{ ...SEEDS[0], inicio: dia(8, 5, 10) }, { ...SEEDS[1], inicio: dia(8, 5, 22) }],
+    new Date(2025, 7, 5),
+  )
+  assert.equal(dias.length, 1)
+  assert.equal(dias[0].n, 2)
+})
+
+test('porDia: dia sem crise no meio entra com zero', () => {
+  const dias = porDia(
+    [{ ...SEEDS[0], inicio: dia(8, 1, 10) }, { ...SEEDS[1], inicio: dia(8, 3, 10) }],
+    new Date(2025, 7, 3),
+  )
+  assert.deepEqual(dias.map((d) => d.n), [1, 0, 1])
+})
+
+test('porDia: lista vazia', () => {
+  assert.deepEqual(porDia([]), [])
 })
 
 test('idade sai do nascimento (sem contar o aniversário que não chegou)', () => {

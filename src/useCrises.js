@@ -45,8 +45,14 @@ export function useCrises(pacienteId) {
     return true
   }, [])
 
-  const encerrar = useCallback((id, alivio) =>
-    atualizar(id, { fim: new Date().toISOString(), alivio }), [atualizar])
+  // A medicação pendente vai junto: um clique no botão não é caminho garantido de blur
+  // (Enter, autofill, teclado do Safari iOS), e mandar tudo num patch só evita duas
+  // escritas concorrentes na mesma linha. Chave ausente = "não toque na coluna".
+  const encerrar = useCallback((id, alivio, medicacao) =>
+    atualizar(id, {
+      fim: new Date().toISOString(), alivio,
+      ...(medicacao === undefined ? {} : { medicacao }),
+    }), [atualizar])
 
   const apagar = useCallback(async (id) => {
     const { error } = await supabase.from('crises').delete().eq('id', id)

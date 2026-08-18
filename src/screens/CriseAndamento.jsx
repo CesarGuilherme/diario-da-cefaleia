@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { fmtDecorrido, fmtHora } from '../format.js'
 import { INT, INTENSIDADES, ALIVIOS, ALIVIO_PAL, SINTOMAS } from '../tokens.js'
 import { card, sectionLabel, campo, legenda, Segmented, Chip, BotaoPrimario } from '../ui.jsx'
+import { serial } from '../serial.js'
 
 const R = 104
 const VOLTA = Math.round(2 * Math.PI * R) // 653 — mesmo valor do protótipo
@@ -12,6 +13,10 @@ export default function CriseAndamento({ ativa, atualizar, encerrar, irPara }) {
   const [alivio, setAlivio] = useState(null) // só vai pro banco ao encerrar, igual ao iOS
   const [med, setMed] = useState(ativa.medicacao)
   const [ocupado, setOcupado] = useState(false)
+  // Fila + intenção acumulada: `ativa.sintomas` só muda depois do round-trip, então dois
+  // cliques rápidos partiriam do mesmo array e o segundo apagaria o primeiro.
+  const enfileirar = useRef(serial()).current
+  const sintomas = useRef(ativa.sintomas)
 
   useEffect(() => {
     const t = setInterval(() => setAgora(Date.now()), 1000)
@@ -22,9 +27,20 @@ export default function CriseAndamento({ ativa, atualizar, encerrar, irPara }) {
   const decorrido = Math.max(0, agora - inicio.getTime())
   const preenchido = Math.min(decorrido / SWEEP_MS, 1) * VOLTA
 
+  const alternarSintoma = (s) => {
+    const proximos = sintomas.current.includes(s)
+      ? sintomas.current.filter((x) => x !== s)
+      : [...sintomas.current, s]
+    sintomas.current = proximos
+    enfileirar(() => atualizar(ativa.id, { sintomas: proximos }))
+  }
+
   const fechar = async () => {
     setOcupado(true)
-    if (await encerrar(ativa.id, alivio)) irPara('historico')
+    // Clicar no botão não é caminho garantido de blur — a medicação pendente vai no
+    // patch de encerramento, senão o save por perda de foco podia nunca disparar.
+    const pendente = med !== ativa.medicacao ? med : undefined
+    if (await encerrar(ativa.id, alivio, pendente)) irPara('historico')
     else setOcupado(false)
   }
 
@@ -74,11 +90,7 @@ export default function CriseAndamento({ ativa, atualizar, encerrar, irPara }) {
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {SINTOMAS.map((s) => (
             <Chip key={s} label={s} selecionado={ativa.sintomas.includes(s)}
-              onClick={() => atualizar(ativa.id, {
-                sintomas: ativa.sintomas.includes(s)
-                  ? ativa.sintomas.filter((x) => x !== s)
-                  : [...ativa.sintomas, s],
-              })} />
+              onClick={() => alternarSintoma(s)} />
           ))}
         </div>
       </section>

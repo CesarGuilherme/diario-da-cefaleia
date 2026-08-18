@@ -11,7 +11,8 @@ import NovaCrise from './screens/NovaCrise.jsx'
 import CriseAndamento from './screens/CriseAndamento.jsx'
 import Historico from './screens/Historico.jsx'
 import {
-  MIN_CRISES, CabecalhoRelatorio, SemDados, Insight, Gatilhos, Estatisticas, DiasPorMes, Compartilhar,
+  MIN_CRISES, CabecalhoRelatorio, SemDados, Insight, Gatilhos, Estatisticas, DiasPorMes, CrisesPorDia,
+  Compartilhar,
 } from './screens/Relatorio.jsx'
 
 // 100vh menos o padding do grid (28px em cima e embaixo), senão o documento fica maior
@@ -177,6 +178,7 @@ export default function Painel({ pac, dados, erro, dispensar }) {
                 <DiasPorMes crises={encerradas} />
               </div>
             </div>
+            <CrisesPorDia crises={encerradas} />
             <Compartilhar encerradas={encerradas} paciente={paciente} />
           </>
         )}

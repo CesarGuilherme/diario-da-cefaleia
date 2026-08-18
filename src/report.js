@@ -80,6 +80,33 @@ export function porMes(crises, hoje = new Date()) {
   return meses
 }
 
+/**
+ * Uma entrada por dia, da primeira crise até hoje. Dias sem crise entram com n=0 para a
+ * linha mostrar o chão. Duas crises no mesmo dia somam (ao contrário de porMes, que conta
+ * dias). Espelha porDia em Report.swift:120-139.
+ */
+export function porDia(crises, hoje = new Date()) {
+  if (!crises.length) return []
+  const conta = new Map()   // 'YYYY-M-D' -> n
+  let primeira = null
+  for (const c of crises) {
+    const d = new Date(c.inicio)
+    const dia = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+    const k = dia.getTime()
+    conta.set(k, (conta.get(k) ?? 0) + 1)
+    if (!primeira || dia < primeira) primeira = dia
+  }
+
+  const dias = []
+  const cur = new Date(primeira)
+  const fim = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate())
+  while (cur <= fim) {
+    dias.push({ dia: new Date(cur), n: conta.get(cur.getTime()) ?? 0 })
+    cur.setDate(cur.getDate() + 1)
+  }
+  return dias
+}
+
 export function analisar(crises) {
   const n = crises.length
   const gatilhos = DEFS

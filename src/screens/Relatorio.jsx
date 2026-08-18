@@ -2,8 +2,8 @@
 // o dashboard desktop distribui em duas. Mesma análise, layouts diferentes.
 import { useState } from 'react'
 import { supabase } from '../lib/supabase.js'
-import { analisar, textoRelatorio, porMes } from '../report.js'
-import { fmtDuracao } from '../format.js'
+import { analisar, textoRelatorio, porMes, porDia } from '../report.js'
+import { fmtDuracao, fmtDataHist } from '../format.js'
 import { card, titulo, eyebrow, CardVazio } from '../ui.jsx'
 
 /** Crises encerradas necessárias para o relatório dizer algo — regra única, usada nos dois layouts. */
@@ -121,6 +121,43 @@ export function DiasPorMes({ crises }) {
   )
 }
 
+// Crises por dia, do primeiro registro até hoje. Uma barra por dia num viewBox em
+// coordenadas de dado: `rect` escala sem distorcer (linha com stroke, não — sob escala
+// não uniforme o WebKit deforma a espessura). Sem biblioteca, igual ao DiasPorMes.
+export function CrisesPorDia({ crises }) {
+  const dias = porDia(crises)
+  if (!dias.length) return null
+  const maxN = Math.max(1, ...dias.map((d) => d.n))
+  const comCrise = dias.filter((d) => d.n > 0).length
+
+  return (
+    <section style={{ ...card, padding: 18 }}>
+      <h2 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 2px' }}>Crises por dia</h2>
+      <div style={{ fontSize: 13, color: 'rgba(235,235,245,.5)', marginBottom: 16 }}>
+        {comCrise} de {dias.length} {dias.length === 1 ? 'dia' : 'dias'} com crise · pico de{' '}
+        {maxN} {maxN === 1 ? 'crise' : 'crises'} num dia
+      </div>
+      <div style={{
+        height: 120, borderRadius: 10, padding: '6px 8px', boxSizing: 'border-box',
+        background: 'rgba(0,0,0,.22)', border: '.5px solid rgba(255,255,255,.08)',
+      }}>
+        <svg viewBox={`0 0 ${dias.length} ${maxN}`} preserveAspectRatio="none" role="img"
+          aria-label={`${comCrise} de ${dias.length} dias com crise, pico de ${maxN} num dia`}
+          style={{ width: '100%', height: '100%', display: 'block' }}>
+          {/* ponytail: uma barra por dia; passar de ~400 dias afina a barra abaixo de 1px
+              — agrupar por semana quando alguém chegar lá. */}
+          {dias.map((d, i) => d.n > 0 && (
+            <rect key={d.dia.getTime()} x={i + 0.1} width="0.8"
+              y={maxN - d.n} height={d.n} fill="#ff453a">
+              <title>{`${fmtDataHist(d.dia)} · ${d.n} ${d.n === 1 ? 'crise' : 'crises'}`}</title>
+            </rect>
+          ))}
+        </svg>
+      </div>
+    </section>
+  )
+}
+
 /** Botão + aviso: o estado do compartilhamento pertence ao botão, não à tela. */
 export function Compartilhar({ encerradas, paciente }) {
   const [aviso, setAviso] = useState(null)
@@ -186,6 +223,7 @@ export default function Relatorio({ encerradas, carregando, paciente }) {
           <Insight insight={a.insight} />
           <Gatilhos gatilhos={a.gatilhos} />
           <DiasPorMes crises={encerradas} />
+          <CrisesPorDia crises={encerradas} />
           <Estatisticas frequencia={a.frequencia} duracaoMedia={a.duracaoMedia} />
           <Compartilhar encerradas={encerradas} paciente={paciente} />
         </>
