@@ -1,13 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from './lib/supabase.ts'
+import { aplicar, norm, useAoVoltar } from './sync.ts'
 import type { Alivio, Crise, FormBanco } from './lib/tipos.ts'
 
 // Sem update otimista de propósito: é registro médico, uma escrita que falha calada
 // é dado perdido. Espera o servidor e usa a linha que ele devolveu.
 // ponytail: carrega tudo de uma vez; paginar se alguém passar de ~500 crises.
-// Postgres `numeric` pode chegar como string no JSON. Normaliza na entrada, uma vez,
-// em vez de espalhar Number() por todo consumidor de sono_horas.
-const norm = (r: Crise): Crise => ({ ...r, sono_horas: Number(r.sono_horas) })
 
 /** Tudo que a tela precisa de crises — o que as telas recebem via {...dados}. */
 export type DadosCrises = ReturnType<typeof useCrises>
@@ -17,20 +15,36 @@ export function useCrises(pacienteId: string | null) {
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
 
+  const carregar = useCallback(async () => {
+    if (!pacienteId) { setCrises([]); return }
+    const { data, error } = await supabase.from('crises').select('*')
+      .eq('paciente_id', pacienteId).order('inicio', { ascending: false })
+    if (error) setErro(error.message)
+    else setCrises((data as Crise[]).map(norm))
+    setCarregando(false)
+  }, [pacienteId])
+
+  // A lista tem de mudar sozinha: os dois celulares da casa ficam na mesma conta, e a crise
+  // registrada num precisa aparecer no outro sem fechar o app. O Realtime traz cada escrita;
+  // o `carregar()` do SUBSCRIBED cobre o que passou enquanto o socket esteve caído.
   useEffect(() => {
     if (!pacienteId) { setCrises([]); return }
-    let vivo = true
     setCarregando(true)
-    supabase.from('crises').select('*').eq('paciente_id', pacienteId)
-      .order('inicio', { ascending: false })
-      .then(({ data, error }) => {
-        if (!vivo) return
-        if (error) setErro(error.message)
-        else setCrises((data as Crise[]).map(norm))
-        setCarregando(false)
-      })
-    return () => { vivo = false }
-  }, [pacienteId])
+    const canal = supabase.channel(`crises:${pacienteId}`)
+      .on<Crise>(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'crises', filter: `paciente_id=eq.${pacienteId}` },
+        // ponytail: dois PATCHes seguidos na mesma linha (a fila do serial.ts, os sintomas da
+        // crise em andamento) podem fazer um eco antigo repintar a linha por alguns
+        // milissegundos — converge no eco seguinte. Se incomodar: coluna `atualizado_em` com
+        // trigger, descartando evento mais velho que a linha em memória.
+        (evento) => setCrises((cs) => aplicar(cs, evento)),
+      )
+      .subscribe((status) => { if (status === 'SUBSCRIBED') carregar() })
+    return () => { supabase.removeChannel(canal) }
+  }, [pacienteId, carregar])
+
+  useAoVoltar(carregar)
 
   const iniciar = useCallback(async (form: FormBanco) => {
     if (!pacienteId) return false

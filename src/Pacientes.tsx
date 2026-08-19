@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from './lib/supabase.ts'
 import { card, campo, titulo, eyebrow, sectionLabel, BotaoPrimario } from './ui.tsx'
 import { idade } from './format.ts'
+import { useAoVoltar } from './sync.ts'
 import type { Paciente } from './lib/tipos.ts'
 import type { FormEvent } from 'react'
 
@@ -20,17 +21,23 @@ export function usePacientes(userId: string) {
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
 
+  const carregar = useCallback(async () => {
+    const { data, error } = await supabase.from('pacientes').select('*').order('criado_em')
+    if (error) setErro(error.message)
+    else setPacientes(data)
+    setCarregando(false)
+  }, [])
+
+  // Paciente novo ou renomeado no outro celular tem de aparecer aqui também. Sem filtro: a
+  // RLS já limita à conta, e a lista é curta demais para valer um merge próprio — recarrega.
   useEffect(() => {
-    let vivo = true
-    supabase.from('pacientes').select('*').order('criado_em')
-      .then(({ data, error }) => {
-        if (!vivo) return
-        if (error) setErro(error.message)
-        else setPacientes(data)
-        setCarregando(false)
-      })
-    return () => { vivo = false }
-  }, [userId])
+    const canal = supabase.channel(`pacientes:${userId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pacientes' }, () => carregar())
+      .subscribe((status) => { if (status === 'SUBSCRIBED') carregar() })
+    return () => { supabase.removeChannel(canal) }
+  }, [userId, carregar])
+
+  useAoVoltar(carregar)
 
   const escolher = useCallback((novo: string) => {
     setId(novo)
