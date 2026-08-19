@@ -2,14 +2,14 @@
 // num sintoma partem do mesmo array e o segundo PATCH apaga o primeiro.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { serial } from '../src/serial.js'
+import { serial } from '../src/serial.ts'
 
 // Escritas que resolvem fora de ordem: a primeira demora mais que a segunda.
-const fakeAtualizar = (log, atrasos) => (patch) =>
-  new Promise((r) => setTimeout(() => { log.push(patch.sintomas); r(true) }, atrasos.shift()))
+const fakeAtualizar = (log: string[][], atrasos: number[]) => (patch: { sintomas: string[] }) =>
+  new Promise<boolean>((r) => setTimeout(() => { log.push(patch.sintomas); r(true) }, atrasos.shift()))
 
 test('as escritas chegam na ordem, mesmo resolvendo fora de ordem', async () => {
-  const log = []
+  const log: string[][] = []
   const atualizar = fakeAtualizar(log, [30, 1])
   const enfileirar = serial()
 
@@ -21,7 +21,7 @@ test('as escritas chegam na ordem, mesmo resolvendo fora de ordem', async () => 
 })
 
 test('uma escrita que falha não trava a fila', async () => {
-  const feitas = []
+  const feitas: string[] = []
   const enfileirar = serial()
 
   enfileirar(() => Promise.reject(new Error('rede caiu')))

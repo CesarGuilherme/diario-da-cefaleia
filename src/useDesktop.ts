@@ -8,7 +8,7 @@ export function useDesktop() {
   const [desktop, setDesktop] = useState(() => matchMedia(MQ).matches)
   useEffect(() => {
     const mq = matchMedia(MQ)
-    const ouve = (e) => setDesktop(e.matches)
+    const ouve = (e: MediaQueryListEvent) => setDesktop(e.matches)
     mq.addEventListener('change', ouve)
     return () => mq.removeEventListener('change', ouve)
   }, [])

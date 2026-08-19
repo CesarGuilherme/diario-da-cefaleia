@@ -1,17 +1,24 @@
 // Pacientes: um responsável, N filhos. Toda crise pertence a um — o paciente
 // selecionado é o filtro de tudo que o app mostra.
 import { useCallback, useEffect, useState } from 'react'
-import { supabase } from './lib/supabase.js'
-import { card, campo, titulo, eyebrow, sectionLabel, BotaoPrimario } from './ui.jsx'
-import { idade } from './format.js'
+import { supabase } from './lib/supabase.ts'
+import { card, campo, titulo, eyebrow, sectionLabel, BotaoPrimario } from './ui.tsx'
+import { idade } from './format.ts'
+import type { Paciente } from './lib/tipos.ts'
+import type { FormEvent } from 'react'
 
-const chaveLocal = (userId) => `paciente:${userId}`
+/** Campos editáveis de um paciente — o que o form devolve. */
+export type CamposPaciente = Pick<Paciente, 'nome' | 'data_nascimento'>
 
-export function usePacientes(userId) {
-  const [pacientes, setPacientes] = useState([])
-  const [id, setId] = useState(() => localStorage.getItem(chaveLocal(userId)))
+const chaveLocal = (userId: string) => `paciente:${userId}`
+
+export type DadosPacientes = ReturnType<typeof usePacientes>
+
+export function usePacientes(userId: string) {
+  const [pacientes, setPacientes] = useState<Paciente[]>([])
+  const [id, setId] = useState<string | null>(() => localStorage.getItem(chaveLocal(userId)))
   const [carregando, setCarregando] = useState(true)
-  const [erro, setErro] = useState(null)
+  const [erro, setErro] = useState<string | null>(null)
 
   useEffect(() => {
     let vivo = true
@@ -25,12 +32,12 @@ export function usePacientes(userId) {
     return () => { vivo = false }
   }, [userId])
 
-  const escolher = useCallback((novo) => {
+  const escolher = useCallback((novo: string) => {
     setId(novo)
     localStorage.setItem(chaveLocal(userId), novo)
   }, [userId])
 
-  const criar = useCallback(async (campos) => {
+  const criar = useCallback(async (campos: CamposPaciente) => {
     const { data, error } = await supabase.from('pacientes').insert(campos).select().single()
     if (error) { setErro(error.message); return false }
     setPacientes((ps) => [...ps, data])
@@ -38,7 +45,7 @@ export function usePacientes(userId) {
     return true
   }, [escolher])
 
-  const salvar = useCallback(async (pid, campos) => {
+  const salvar = useCallback(async (pid: string, campos: CamposPaciente) => {
     const { data, error } = await supabase.from('pacientes')
       .update(campos).eq('id', pid).select().single()
     if (error) { setErro(error.message); return false }
@@ -53,13 +60,18 @@ export function usePacientes(userId) {
 }
 
 /** Form de paciente. Sem `inicial` = criando; com = editando. */
-export function FormPaciente({ inicial, primeiro, onSalvar, onCancelar }) {
+export function FormPaciente({ inicial, primeiro, onSalvar, onCancelar }: {
+  inicial?: Paciente | null
+  primeiro?: boolean
+  onSalvar: (campos: CamposPaciente) => Promise<boolean>
+  onCancelar?: () => void
+}) {
   const [nome, setNome] = useState(inicial?.nome ?? '')
   const [nasc, setNasc] = useState(inicial?.data_nascimento ?? '')
   const [salvando, setSalvando] = useState(false)
   const hoje = new Date().toISOString().slice(0, 10)
 
-  const enviar = async (e) => {
+  const enviar = async (e: FormEvent) => {
     e.preventDefault()
     if (!nome.trim() || salvando) return
     setSalvando(true)
@@ -100,7 +112,13 @@ export function FormPaciente({ inicial, primeiro, onSalvar, onCancelar }) {
 }
 
 /** Troca de paciente. `<select>` nativo: o iOS já dá a roleta e a acessibilidade. */
-export function BarraPaciente({ pacientes, selecionado, escolher, onNovo, onEditar }) {
+export function BarraPaciente({ pacientes, selecionado, escolher, onNovo, onEditar }: {
+  pacientes: Paciente[]
+  selecionado: Paciente
+  escolher: (id: string) => void
+  onNovo: () => void
+  onEditar: () => void
+}) {
   const anos = idade(selecionado.data_nascimento)
   return (
     <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 14 }}>

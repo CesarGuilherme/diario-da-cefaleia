@@ -1,21 +1,29 @@
 import { useEffect, useRef, useState } from 'react'
-import { fmtDecorrido, fmtHora } from '../format.js'
-import { INT, INTENSIDADES, ALIVIOS, ALIVIO_PAL, SINTOMAS } from '../tokens.js'
-import { card, sectionLabel, campo, legenda, Segmented, Chip, BotaoPrimario } from '../ui.jsx'
-import { serial } from '../serial.js'
+import { fmtDecorrido, fmtHora } from '../format.ts'
+import { INT, INTENSIDADES, ALIVIOS, ALIVIO_PAL, SINTOMAS } from '../tokens.ts'
+import { card, sectionLabel, campo, legenda, Segmented, Chip, BotaoPrimario } from '../ui.tsx'
+import { serial } from '../serial.ts'
+import type { DadosCrises } from '../useCrises.ts'
+import type { Alivio, Crise } from '../lib/tipos.ts'
 
 const R = 104
 const VOLTA = Math.round(2 * Math.PI * R) // 653 — mesmo valor do protótipo
 const SWEEP_MS = 180 * 60 * 1000          // o anel completa uma volta em 3h
 
-export default function CriseAndamento({ ativa, atualizar, encerrar, irPara }) {
+export default function CriseAndamento(
+  { ativa, atualizar, encerrar, irPara }: Pick<DadosCrises, 'atualizar' | 'encerrar'> & {
+    ativa: Crise
+    irPara: (tela: 'historico') => void
+  },
+) {
   const [agora, setAgora] = useState(() => Date.now())
-  const [alivio, setAlivio] = useState(null) // só vai pro banco ao encerrar, igual ao iOS
+  // só vai pro banco ao encerrar, igual ao iOS
+  const [alivio, setAlivio] = useState<Alivio | null>(null)
   const [med, setMed] = useState(ativa.medicacao)
   const [ocupado, setOcupado] = useState(false)
   // Fila + intenção acumulada: `ativa.sintomas` só muda depois do round-trip, então dois
   // cliques rápidos partiriam do mesmo array e o segundo apagaria o primeiro.
-  const enfileirar = useRef(serial()).current
+  const enfileirar = useRef(serial<boolean>()).current
   const sintomas = useRef(ativa.sintomas)
 
   useEffect(() => {
@@ -27,7 +35,7 @@ export default function CriseAndamento({ ativa, atualizar, encerrar, irPara }) {
   const decorrido = Math.max(0, agora - inicio.getTime())
   const preenchido = Math.min(decorrido / SWEEP_MS, 1) * VOLTA
 
-  const alternarSintoma = (s) => {
+  const alternarSintoma = (s: string) => {
     const proximos = sintomas.current.includes(s)
       ? sintomas.current.filter((x) => x !== s)
       : [...sintomas.current, s]

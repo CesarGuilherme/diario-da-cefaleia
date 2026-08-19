@@ -3,11 +3,15 @@
 // esperados são os do screenshot 04-relatorio.png.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { analisar, textoRelatorio, recorrentes, porMes, porDia, snapshotRelatorio } from '../src/report.js'
-import { itensDe, paraForm, paraBanco } from '../src/tokens.js'
-import { fmtDuracao, fmtSono, fmtDataHist, fmtEyebrow, idade } from '../src/format.js'
+import { analisar, textoRelatorio, recorrentes, porMes, porDia, snapshotRelatorio } from '../src/report.ts'
+import { itensDe, paraForm, paraBanco } from '../src/tokens.ts'
+import { fmtDuracao, fmtSono, fmtDataHist, fmtEyebrow, idade } from '../src/format.ts'
+import type { CriseSnapshot } from '../src/lib/tipos.ts'
 
-const c = (inicio, fim, o) => ({
+// O que toda crise da fixture precisa dizer; o resto tem padrão.
+type Obrigatorios = Pick<CriseSnapshot, 'intensidade' | 'localizacao' | 'carater' | 'sono_horas'>
+
+const c = (inicio: string, fim: string | null, o: Obrigatorios & Partial<CriseSnapshot>): CriseSnapshot => ({
   inicio, fim, sintomas: [], gatilhos: [], detalhes: {}, medicacao: '', alivio: null, ...o,
 })
 
@@ -51,7 +55,7 @@ test('crise em andamento não entra na duração média', () => {
 })
 
 test('duração média é null quando nada foi encerrado', () => {
-  const abertas = [SEEDS[0], SEEDS[1]].map((s) => ({ ...s, fim: null }))
+  const abertas = [SEEDS[0]!, SEEDS[1]!].map((s) => ({ ...s, fim: null }))
   assert.equal(analisar(abertas).duracaoMedia, null)
 })
 
@@ -97,13 +101,13 @@ test('repetir o item na mesma crise não vira recorrência', () => {
 
 test('só conta crises em que o gatilho estava presente', () => {
   const misto = [...ALIMENTACAO, c('2025-07-20T18:00:00Z', '2025-07-20T19:00:00Z', { intensidade: 'Leve', localizacao: 'Esq.', carater: 'Pressão', sono_horas: 8, gatilhos: ['Estresse'], detalhes: { 'Estresse': ['prova'] } })]
-  assert.equal(recorrentes(misto, 'Alimentação')[0].de, 3) // 3, não 4
+  assert.equal(recorrentes(misto, 'Alimentação')[0]!.de, 3) // 3, não 4
 })
 
 test('Sono < 7h não tem itens (é numérico)', () => {
   assert.deepEqual(recorrentes(ALIMENTACAO, null), [])
   const sono = analisar(ALIMENTACAO).gatilhos.find((g) => g.label === 'Sono < 7h')
-  assert.deepEqual(sono.recorrentes, [])
+  assert.deepEqual(sono!.recorrentes, [])
 })
 
 test('recorrentes aparecem no texto para o médico', () => {
@@ -120,17 +124,17 @@ test('dias com e sem crise por mês', () => {
 
 test('mês corrente conta só os dias já vividos', () => {
   const ago = porMes(SEEDS, new Date(2025, 7, 10)).at(-1)
-  assert.deepEqual([ago.mes, ago.com, ago.sem, ago.total], ['ago/25', 2, 8, 10])
+  assert.deepEqual([ago!.mes, ago!.com, ago!.sem, ago!.total], ['ago/25', 2, 8, 10])
 })
 
 test('mês sem nenhuma crise entra com zero', () => {
-  const meses = porMes([SEEDS[0], { ...SEEDS[3], inicio: '2025-06-10T12:00:00Z' }], new Date(2025, 7, 31))
+  const meses = porMes([SEEDS[0]!, { ...SEEDS[3]!, inicio: '2025-06-10T12:00:00Z' }], new Date(2025, 7, 31))
   assert.deepEqual(meses.map((m) => [m.mes, m.com]), [['jun/25', 1], ['jul/25', 0], ['ago/25', 1]])
 })
 
 test('duas crises no mesmo dia contam um dia só', () => {
-  const mesmoDia = [SEEDS[0], { ...SEEDS[0], inicio: '2025-08-05T22:00:00Z' }]
-  assert.equal(porMes(mesmoDia, new Date(2025, 7, 31))[0].com, 1)
+  const mesmoDia = [SEEDS[0]!, { ...SEEDS[0]!, inicio: '2025-08-05T22:00:00Z' }]
+  assert.equal(porMes(mesmoDia, new Date(2025, 7, 31))[0]!.com, 1)
 })
 
 test('sem crise nenhuma não há meses', () => {
@@ -139,30 +143,30 @@ test('sem crise nenhuma não há meses', () => {
 
 // porDia usa a convenção oposta à de porMes: soma as crises do dia em vez de contar dias.
 // Datas locais (`new Date(a, m, d, h)`) porque o dia sai do fuso do usuário, não do UTC.
-const dia = (mes, d, hora) => new Date(2025, mes - 1, d, hora).toISOString()
+const dia = (mes: number, d: number, hora: number) => new Date(2025, mes - 1, d, hora).toISOString()
 
 test('porDia: dois dias distintos', () => {
   const dias = porDia(
-    [{ ...SEEDS[0], inicio: dia(8, 1, 10) }, { ...SEEDS[1], inicio: dia(8, 5, 14) }],
+    [{ ...SEEDS[0]!, inicio: dia(8, 1, 10) }, { ...SEEDS[1]!, inicio: dia(8, 5, 14) }],
     new Date(2025, 7, 5),
   )
-  assert.equal(dias.at(0).n, 1)
-  assert.equal(dias.at(-1).n, 1)
+  assert.equal(dias.at(0)!.n, 1)
+  assert.equal(dias.at(-1)!.n, 1)
   assert.equal(dias.reduce((a, d) => a + d.n, 0), 2)
 })
 
 test('porDia: duas crises no mesmo dia somam', () => {
   const dias = porDia(
-    [{ ...SEEDS[0], inicio: dia(8, 5, 10) }, { ...SEEDS[1], inicio: dia(8, 5, 22) }],
+    [{ ...SEEDS[0]!, inicio: dia(8, 5, 10) }, { ...SEEDS[1]!, inicio: dia(8, 5, 22) }],
     new Date(2025, 7, 5),
   )
   assert.equal(dias.length, 1)
-  assert.equal(dias[0].n, 2)
+  assert.equal(dias[0]!.n, 2)
 })
 
 test('porDia: dia sem crise no meio entra com zero', () => {
   const dias = porDia(
-    [{ ...SEEDS[0], inicio: dia(8, 1, 10) }, { ...SEEDS[1], inicio: dia(8, 3, 10) }],
+    [{ ...SEEDS[0]!, inicio: dia(8, 1, 10) }, { ...SEEDS[1]!, inicio: dia(8, 3, 10) }],
     new Date(2025, 7, 3),
   )
   assert.deepEqual(dias.map((d) => d.n), [1, 0, 1])
@@ -191,7 +195,7 @@ test('itensDe limpa espaço e vírgula sobrando', () => {
 })
 
 test('editar histórico: banco -> form -> banco não perde nem inventa nada', () => {
-  const c = ALIMENTACAO[0]
+  const c = ALIMENTACAO[0]!
   const form = paraForm(c)
   assert.equal(form.detalhes['Alimentação'], 'sopa, alho, frango, milho, batata')
   const volta = paraBanco(form)
@@ -203,20 +207,20 @@ test('editar histórico: banco -> form -> banco não perde nem inventa nada', ()
 })
 
 test('editar histórico: desligar o gatilho joga o detalhe fora', () => {
-  const form = { ...paraForm(ALIMENTACAO[0]), gatilhos: [] }
+  const form = { ...paraForm(ALIMENTACAO[0]!), gatilhos: [] }
   assert.deepEqual(paraBanco(form).detalhes, {})
 })
 
 test('editar histórico: sintoma novo entra sem mexer no resto', () => {
-  const form = paraForm(SEEDS[0])
+  const form = paraForm(SEEDS[0]!)
   form.sintomas = [...form.sintomas, 'Aura']
   assert.deepEqual(paraBanco(form).sintomas, ['Náusea', 'Fotofobia', 'Aura'])
-  assert.deepEqual(paraForm(SEEDS[0]).sintomas, ['Náusea', 'Fotofobia']) // não mutou a crise original
+  assert.deepEqual(paraForm(SEEDS[0]!).sintomas, ['Náusea', 'Fotofobia']) // não mutou a crise original
 })
 
 test('crises sem detalhes não quebram a análise', () => {
   assert.deepEqual(recorrentes(SEEDS, 'Estresse'), [])
-  assert.equal(analisar(SEEDS).gatilhos[0].pct, 75)
+  assert.equal(analisar(SEEDS).gatilhos[0]!.pct, 75)
 })
 
 test('texto compartilhado traz insight, gatilhos e as crises', () => {

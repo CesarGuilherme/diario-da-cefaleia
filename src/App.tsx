@@ -1,15 +1,20 @@
 import { useEffect, useState } from 'react'
-import { supabase, faltaConfig } from './lib/supabase.js'
-import { useCrises } from './useCrises.js'
-import { usePacientes, FormPaciente, BarraPaciente } from './Pacientes.jsx'
-import { useDesktop } from './useDesktop.js'
-import { BannerErro } from './ui.jsx'
-import Painel from './Painel.jsx'
-import Login from './Login.jsx'
-import NovaCrise from './screens/NovaCrise.jsx'
-import CriseAndamento from './screens/CriseAndamento.jsx'
-import Historico from './screens/Historico.jsx'
-import Relatorio from './screens/Relatorio.jsx'
+import { supabase, faltaConfig } from './lib/supabase.ts'
+import { useCrises } from './useCrises.ts'
+import type { DadosCrises } from './useCrises.ts'
+import { usePacientes, FormPaciente, BarraPaciente } from './Pacientes.tsx'
+import type { DadosPacientes } from './Pacientes.tsx'
+import { useDesktop } from './useDesktop.ts'
+import { BannerErro } from './ui.tsx'
+import Painel from './Painel.tsx'
+import Login from './Login.tsx'
+import NovaCrise from './screens/NovaCrise.tsx'
+import CriseAndamento from './screens/CriseAndamento.tsx'
+import Historico from './screens/Historico.tsx'
+import Relatorio from './screens/Relatorio.tsx'
+import type { Paciente } from './lib/tipos.ts'
+import type { CSSProperties } from 'react'
+import type { Session } from '@supabase/supabase-js'
 
 const AURORA = [
   'radial-gradient(circle at 15% 8%, rgba(124,108,246,.38), transparent 42%)',
@@ -19,10 +24,21 @@ const AURORA = [
 // O 4º gradiente só aparece com crise aberta — junto com a aba vermelha, é o aviso do app.
 const AURORA_ATIVA = 'radial-gradient(circle at 50% 0%, rgba(255,69,58,.30), transparent 45%)'
 
-const ABAS = [['Nova', 'nova'], ['Histórico', 'historico'], ['Relatório', 'relatorio']]
+const ABAS = [['Nova', 'nova'], ['Histórico', 'historico'], ['Relatório', 'relatorio']] as const
+
+type Tela = (typeof ABAS)[number][1]
+
+/** O que a casca (telefone ou dashboard) recebe pronto do Diario. */
+export type Casca = {
+  pac: DadosPacientes
+  dados: DadosCrises
+  erro: string | null
+  dispensar: () => void
+}
 
 export default function App() {
-  const [sessao, setSessao] = useState(undefined) // undefined = ainda carregando
+  // undefined = ainda carregando; null = deslogado
+  const [sessao, setSessao] = useState<Session | null | undefined>(undefined)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSessao(data.session))
@@ -32,7 +48,7 @@ export default function App() {
 
   // backgroundImage/Color separados do shorthand: misturar `background` com
   // `backgroundAttachment` faz o React avisar de conflito no rerender.
-  const fundo = {
+  const fundo: CSSProperties = {
     minHeight: '100%',
     backgroundImage: AURORA.join(','),
     backgroundColor: '#0a0a13',
@@ -67,9 +83,9 @@ function ErroConfig() {
 
 // A casca é a mesma nos dois tamanhos: aurora, banner de erro e os hooks de dados.
 // Só a composição interna troca — telefone empilha em abas, desktop abre o dashboard.
-function Diario({ userId }) {
+function Diario({ userId }: { userId: string }) {
   const pac = usePacientes(userId)
-  const dados = useCrises(pac.selecionado?.id)
+  const dados = useCrises(pac.selecionado?.id ?? null)
   const desktop = useDesktop()
   const erro = dados.erro ?? pac.erro
   const dispensar = () => { dados.setErro(null); pac.setErro(null) }
@@ -88,9 +104,9 @@ function Diario({ userId }) {
   )
 }
 
-function Telefone({ pac, dados, erro, dispensar }) {
-  const [tela, setTela] = useState('nova')
-  const [editando, setEditando] = useState(null) // null | 'novo' | paciente
+function Telefone({ pac, dados, erro, dispensar }: Casca) {
+  const [tela, setTela] = useState<Tela>('nova')
+  const [editando, setEditando] = useState<'novo' | Paciente | null>(null)
   const paciente = pac.selecionado
   const { ativa } = dados
 
@@ -122,7 +138,7 @@ function Telefone({ pac, dados, erro, dispensar }) {
               onNovo={() => setEditando('novo')} onEditar={() => setEditando(paciente)}
             />
             {tela === 'nova' && !ativa && <NovaCrise {...dados} />}
-            {tela === 'nova' && ativa && <CriseAndamento key={ativa.id} {...dados} irPara={setTela} />}
+            {tela === 'nova' && ativa && <CriseAndamento key={ativa.id} {...dados} ativa={ativa} irPara={setTela} />}
             {tela === 'historico' && <Historico {...dados} />}
             {tela === 'relatorio' && <Relatorio {...dados} paciente={paciente} />}
           </>

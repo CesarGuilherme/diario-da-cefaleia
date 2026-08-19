@@ -1,7 +1,8 @@
 // Toda a lógica do Relatório, pura e sem React — é a única coisa não-trivial do app,
 // e é o que test/report.test.mjs cobre. Portado do protótipo (linhas 267-282).
 
-import { fmtDuracao, fmtDataHist, fmtHora, fmtMes, duracaoMin, idade } from './format.js'
+import { fmtDuracao, fmtDataHist, fmtHora, fmtMes, duracaoMin, idade } from './format.ts'
+import type { CriseSnapshot, Paciente, Snapshot } from './lib/tipos.ts'
 
 // O 2º item é a chave do gatilho em `gatilhos`/`detalhes` — null para "Sono < 7h",
 // que é numérico e não tem itens.
@@ -14,24 +15,31 @@ const DEFS = [
     'linear-gradient(90deg,#2fb8a6,#5ee6c8)', 'rgba(235,235,245,.8)', 'none'],
   ['Alimentação', 'Alimentação',
     'linear-gradient(90deg,#8e8e93,#aeaeb2)', 'rgba(235,235,245,.8)', 'none'],
-]
+] as const
 
-const presente = (gatilho) =>
-  gatilho === null ? (c) => c.sono_horas < 7 : (c) => c.gatilhos.includes(gatilho)
+type Gatilho = (typeof DEFS)[number][1]
+
+/** Um item que se repete: "leite em 2 de 3". */
+export type Recorrente = { item: string; n: number; de: number }
+
+const presente = (gatilho: Gatilho) =>
+  gatilho === null
+    ? (c: CriseSnapshot) => c.sono_horas < 7
+    : (c: CriseSnapshot) => c.gatilhos.includes(gatilho)
 
 // Compara ignorando caixa e acento, para "Leite" e "leite" contarem como o mesmo item.
-const chave = (s) => s.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+const chave = (s: string) => s.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 
 /**
  * Itens que se repetem entre as crises de um gatilho — o "leite em 2 de 3".
  * Conta uma vez por crise (repetir na mesma crise não vira recorrência).
  */
-export function recorrentes(crises, gatilho) {
+export function recorrentes(crises: CriseSnapshot[], gatilho: Gatilho): Recorrente[] {
   if (!gatilho) return []
   const comGatilho = crises.filter(presente(gatilho))
-  const conta = new Map()
+  const conta = new Map<string, { item: string; n: number }>()
   for (const c of comGatilho) {
-    const vistos = new Set()
+    const vistos = new Set<string>()
     for (const item of c.detalhes?.[gatilho] ?? []) {
       const k = chave(item)
       if (!k || vistos.has(k)) continue
@@ -52,20 +60,20 @@ export function recorrentes(crises, gatilho) {
  * (meses vazios no meio entram com 0 — é justamente o mês bom que o médico quer ver).
  * ponytail: conta o dia do `inicio`; crise que atravessa a meia-noite conta 1 dia só.
  */
-export function porMes(crises, hoje = new Date()) {
+export function porMes(crises: CriseSnapshot[], hoje = new Date()) {
   if (!crises.length) return []
-  const dias = new Map()   // 'YYYY-MM' -> Set de dias do mês com crise
-  let primeira = null
+  const dias = new Map<string, Set<number>>()   // 'YYYY-MM' -> dias do mês com crise
+  let primeira: Date | null = null
   for (const c of crises) {
     const d = new Date(c.inicio)
     if (!primeira || d < primeira) primeira = d
     const k = `${d.getFullYear()}-${d.getMonth()}`
     if (!dias.has(k)) dias.set(k, new Set())
-    dias.get(k).add(d.getDate())
+    dias.get(k)!.add(d.getDate())
   }
 
   const meses = []
-  const cur = new Date(primeira.getFullYear(), primeira.getMonth(), 1)
+  const cur = new Date(primeira!.getFullYear(), primeira!.getMonth(), 1)
   const ultimo = new Date(hoje.getFullYear(), hoje.getMonth(), 1)
   while (cur <= ultimo) {
     const k = `${cur.getFullYear()}-${cur.getMonth()}`
@@ -85,10 +93,10 @@ export function porMes(crises, hoje = new Date()) {
  * linha mostrar o chão. Duas crises no mesmo dia somam (ao contrário de porMes, que conta
  * dias). Espelha porDia em Report.swift:120-139.
  */
-export function porDia(crises, hoje = new Date()) {
+export function porDia(crises: CriseSnapshot[], hoje = new Date()) {
   if (!crises.length) return []
-  const conta = new Map()   // 'YYYY-M-D' -> n
-  let primeira = null
+  const conta = new Map<number, number>()   // timestamp do dia -> n
+  let primeira: Date | null = null
   for (const c of crises) {
     const d = new Date(c.inicio)
     const dia = new Date(d.getFullYear(), d.getMonth(), d.getDate())
@@ -98,7 +106,7 @@ export function porDia(crises, hoje = new Date()) {
   }
 
   const dias = []
-  const cur = new Date(primeira)
+  const cur = new Date(primeira!)
   const fim = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate())
   while (cur <= fim) {
     dias.push({ dia: new Date(cur), n: conta.get(cur.getTime()) ?? 0 })
@@ -107,7 +115,10 @@ export function porDia(crises, hoje = new Date()) {
   return dias
 }
 
-export function analisar(crises) {
+/** O que o relatório desenha — gatilhos ordenados, insight e as duas estatísticas. */
+export type Analise = ReturnType<typeof analisar>
+
+export function analisar(crises: CriseSnapshot[]) {
   const n = crises.length
   const gatilhos = DEFS
     .map(([label, gatilho, grad, valColor, sh]) => ({
@@ -137,7 +148,11 @@ export function analisar(crises) {
 // O que vai no link público é uma cópia congelada, não um espelho: o médico vê daqui a
 // 20 dias o mesmo relatório que você mandou, e crise nova não vaza para um link já enviado.
 // Sem ids e sem data_nascimento — só o que o relatório desenha.
-export function snapshotRelatorio(encerradas, paciente, hoje = new Date()) {
+export function snapshotRelatorio(
+  encerradas: CriseSnapshot[],
+  paciente: Pick<Paciente, 'nome' | 'data_nascimento'>,
+  hoje = new Date(),
+): Snapshot {
   return {
     versao: 1,
     gerado_em: hoje.toISOString(),
@@ -153,7 +168,10 @@ export function snapshotRelatorio(encerradas, paciente, hoje = new Date()) {
 }
 
 // Texto compartilhado com o médico. Espelha reportText em RelatorioView.swift:37-53.
-export function textoRelatorio(crises, paciente = null) {
+export function textoRelatorio(
+  crises: CriseSnapshot[],
+  paciente: Pick<Paciente, 'nome' | 'data_nascimento'> | null = null,
+) {
   const { gatilhos, insight, frequencia, duracaoMedia } = analisar(crises)
   const anos = idade(paciente?.data_nascimento)
   const linhas = [

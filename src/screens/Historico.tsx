@@ -1,15 +1,19 @@
 import { useRef, useState } from 'react'
-import { fmtDataHist, fmtHora, fmtDuracao, fmtSono, duracaoMin } from '../format.js'
-import { INT, GATCHIP, ALIVIOS, ALIVIO_PAL, paraForm, paraBanco } from '../tokens.js'
-import { card, sectionLabel, titulo, eyebrow, CardVazio, Segmented, BotaoPrimario } from '../ui.jsx'
-import CamposCrise from '../CamposCrise.jsx'
+import { fmtDataHist, fmtHora, fmtDuracao, fmtSono, duracaoMin } from '../format.ts'
+import { INT, GATCHIP, ALIVIOS, ALIVIO_PAL, paraForm, paraBanco } from '../tokens.ts'
+import { card, sectionLabel, titulo, eyebrow, CardVazio, Segmented, BotaoPrimario } from '../ui.tsx'
+import CamposCrise from '../CamposCrise.tsx'
+import type { DadosCrises } from '../useCrises.ts'
+import type { Alivio, Crise, CriseSnapshot, FormBanco } from '../lib/tipos.ts'
 
 const NEUTRO = { fg: 'rgba(235,235,245,.75)', bg: 'rgba(120,120,128,.2)', bd: '.5px solid transparent' }
 
 // Ordem dos chips copiada do protótipo (linhas 238-245) — é o que dá a leitura rápida do card.
-function chipsDe(c) {
+type Chipe = { label: string; fg: string; bg: string; bd: string }
+
+function chipsDe(c: CriseSnapshot): Chipe[] {
   const m = INT[c.intensidade] ?? INT['Moderada']
-  const chips = [
+  const chips: Chipe[] = [
     { label: c.intensidade, fg: m.chipFg, bg: m.chipBg, bd: m.chipBd },
     { label: `${c.localizacao} · ${c.carater}`, ...NEUTRO },
     // O protótipo cortava em 2 sintomas; agora que dá pra adicionar sintoma depois,
@@ -24,7 +28,7 @@ function chipsDe(c) {
   }
   // Cada gatilho vem seguido do seu detalhe, para a leitura ficar "Alimentação → leite · pão".
   for (const g of c.gatilhos) {
-    chips.push({ label: g, ...(GATCHIP[g] ?? GATCHIP['Estresse']) })
+    chips.push({ label: g, ...(GATCHIP[g as keyof typeof GATCHIP] ?? GATCHIP['Estresse']) })
     const itens = c.detalhes?.[g] ?? []
     if (itens.length) {
       chips.push({
@@ -39,12 +43,16 @@ function chipsDe(c) {
 // Editar depois do fato: o sintoma que só foi notado no dia seguinte, o alívio que
 // veio horas depois. Mesmo formulário do registro — ponytail: `inicio`/`fim` não são
 // editáveis; abrir se alguém precisar corrigir horário errado.
-function EditarCrise({ c, atualizar, fechar }) {
+function EditarCrise({ c, atualizar, fechar }: {
+  c: Crise
+  atualizar: DadosCrises['atualizar']
+  fechar: () => void
+}) {
   const [form, setForm] = useState(() => paraForm(c))
   // Snapshot da abertura (o key={id} garante montagem por crise): é contra ele que o diff
   // roda. Comparar com a linha atual acusaria como "editado" o campo que mudou no servidor.
   const inicial = useRef(paraBanco(paraForm(c))).current
-  const [alivio, setAlivio] = useState(c.alivio)
+  const [alivio, setAlivio] = useState<Alivio | null>(c.alivio)
   const alivioInicial = useRef(c.alivio).current
   const [ocupado, setOcupado] = useState(false)
 
@@ -52,10 +60,11 @@ function EditarCrise({ c, atualizar, fechar }) {
   // enquanto o editor estava aberto — no desktop o overlay da crise em andamento escreve
   // na mesma linha, ao lado deste form.
   const salvar = async () => {
-    const campos = paraBanco(form)
-    for (const k of Object.keys(campos)) {
-      if (JSON.stringify(campos[k]) === JSON.stringify(inicial[k])) delete campos[k]
-    }
+    const novos = paraBanco(form)
+    const campos: Partial<Crise> = Object.fromEntries(
+      Object.entries(novos)
+        .filter(([k, v]) => JSON.stringify(v) !== JSON.stringify(inicial[k as keyof FormBanco])),
+    )
     if (c.fim && alivio !== alivioInicial) campos.alivio = alivio
     if (!Object.keys(campos).length) { fechar(); return }
     setOcupado(true)
@@ -85,13 +94,18 @@ function EditarCrise({ c, atualizar, fechar }) {
 
 // Exportado para a página pública montar os mesmos cards. Sem `editar`/`apagar` ele
 // vira só leitura — nada de um segundo card que diverge deste.
-export function CriseCard({ c, apagar, editar }) {
+export function CriseCard({ c, apagar, editar }: {
+  c: CriseSnapshot
+  /** Sem apagar/editar o card vira só leitura — é assim que a página pública o usa. */
+  apagar?: () => void
+  editar?: () => void
+}) {
   const m = INT[c.intensidade] ?? INT['Moderada']
   const inicio = new Date(c.inicio)
   const d = duracaoMin(c)
 
   const remover = () => {
-    if (confirm(`Apagar a crise de ${fmtDataHist(inicio)}? Isso não pode ser desfeito.`)) apagar(c.id)
+    if (confirm(`Apagar a crise de ${fmtDataHist(inicio)}? Isso não pode ser desfeito.`)) apagar?.()
   }
 
   return (
@@ -107,12 +121,12 @@ export function CriseCard({ c, apagar, editar }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {c.fim ? (
             <span style={{ fontSize: 13.5, color: 'rgba(235,235,245,.55)', whiteSpace: 'nowrap' }}>
-              {fmtHora(inicio)} – {fmtHora(new Date(c.fim))} · {fmtDuracao(d)}
+              {fmtHora(inicio)} – {fmtHora(new Date(c.fim))} · {fmtDuracao(d!)}
             </span>
           ) : (
             <span style={{ fontSize: 13.5, fontWeight: 600, color: '#ff6961', whiteSpace: 'nowrap' }}>Em andamento</span>
           )}
-          {editar && [['✎', 'Editar', editar], ['✕', 'Apagar', remover]].map(([icone, rotulo, acao]) => (
+          {editar && ([['✎', 'Editar', editar], ['✕', 'Apagar', remover]] as const).map(([icone, rotulo, acao]) => (
             <button key={rotulo} type="button" onClick={acao} title={rotulo}
               aria-label={`${rotulo} crise de ${fmtDataHist(inicio)}`} style={{
                 flex: 'none', width: 28, height: 28, borderRadius: 999, cursor: 'pointer',
@@ -141,9 +155,11 @@ export function CriseCard({ c, apagar, editar }) {
   )
 }
 
-export default function Historico({ crises, carregando, apagar, atualizar }) {
+export default function Historico(
+  { crises, carregando, apagar, atualizar }: Pick<DadosCrises, 'crises' | 'carregando' | 'apagar' | 'atualizar'>,
+) {
   const n = crises.length
-  const [editando, setEditando] = useState(null)
+  const [editando, setEditando] = useState<string | null>(null)
   const crise = crises.find((c) => c.id === editando)
 
   if (crise) {
@@ -163,7 +179,7 @@ export default function Historico({ crises, carregando, apagar, atualizar }) {
         <CardVazio titulo="Nenhuma crise registrada" sub="Registre a primeira crise para começar." />
       )}
       {crises.map((c) => (
-        <CriseCard key={c.id} c={c} apagar={apagar} editar={() => setEditando(c.id)} />
+        <CriseCard key={c.id} c={c} apagar={() => apagar(c.id)} editar={() => setEditando(c.id)} />
       ))}
     </div>
   )

@@ -1,15 +1,21 @@
 // Os painéis do relatório são exportados um a um: o mobile empilha numa coluna,
 // o dashboard desktop distribui em duas. Mesma análise, layouts diferentes.
 import { useEffect, useRef, useState } from 'react'
-import { supabase } from '../lib/supabase.js'
-import { analisar, textoRelatorio, porDia, snapshotRelatorio } from '../report.js'
-import { fmtDuracao, fmtDataHist, fmtDiaEixo } from '../format.js'
-import { card, campo, titulo, eyebrow, CardVazio } from '../ui.jsx'
+import { supabase } from '../lib/supabase.ts'
+import { analisar, textoRelatorio, porDia, snapshotRelatorio } from '../report.ts'
+import { fmtDuracao, fmtDataHist, fmtDiaEixo } from '../format.ts'
+import { card, campo, titulo, eyebrow, CardVazio } from '../ui.tsx'
+import type { Analise } from '../report.ts'
+import type { DadosCrises } from '../useCrises.ts'
+import type { Crise, CriseSnapshot, LinkRelatorio, Paciente } from '../lib/tipos.ts'
+import type { CSSProperties, ReactNode } from 'react'
 
 /** Crises encerradas necessárias para o relatório dizer algo — regra única, usada nos dois layouts. */
 export const MIN_CRISES = 2
 
-function Stat({ rotulo, valor, sufixo, sub }) {
+function Stat({ rotulo, valor, sufixo, sub }: {
+  rotulo: string; valor: string | number; sufixo?: string; sub: string
+}) {
   return (
     <div style={{ ...card, flex: 1, borderRadius: 24, boxShadow: 'inset 1px 1px 1px rgba(255,255,255,.10)' }}>
       <div style={{ fontSize: 13, color: 'rgba(235,235,245,.55)' }}>{rotulo}</div>
@@ -22,7 +28,7 @@ function Stat({ rotulo, valor, sufixo, sub }) {
   )
 }
 
-export function Insight({ insight }) {
+export function Insight({ insight }: { insight: string }) {
   return (
     <section style={{
       position: 'relative', borderRadius: 26, overflow: 'hidden', padding: 18,
@@ -39,7 +45,7 @@ export function Insight({ insight }) {
   )
 }
 
-export function Gatilhos({ gatilhos }) {
+export function Gatilhos({ gatilhos }: { gatilhos: Analise['gatilhos'] }) {
   return (
     <section style={{ ...card, padding: 18 }}>
       <h2 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 2px' }}>Possíveis gatilhos</h2>
@@ -75,7 +81,7 @@ export function Gatilhos({ gatilhos }) {
   )
 }
 
-export function Estatisticas({ frequencia, duracaoMedia }) {
+export function Estatisticas({ frequencia, duracaoMedia }: Pick<Analise, 'frequencia' | 'duracaoMedia'>) {
   return (
     <div style={{ display: 'flex', gap: 12 }}>
       <Stat rotulo="Frequência" valor={frequencia} sufixo="/mês" sub="média do período" />
@@ -96,15 +102,15 @@ const PAD_T = 8
 
 // `hoje` existe para o relatório público congelar a linha na data em que foi gerado, em
 // vez de esticá-la até o relógio de quem abre o link.
-export function CrisesPorDia({ crises, hoje }) {
+export function CrisesPorDia({ crises, hoje }: { crises: CriseSnapshot[]; hoje?: Date }) {
   const dias = porDia(crises, hoje ?? new Date())
-  const [sel, setSel] = useState(null)
+  const [sel, setSel] = useState<number | null>(null)
   const [largura, setLargura] = useState(0)
-  const caixa = useRef(null)
+  const caixa = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!caixa.current) return
-    const ro = new ResizeObserver(([e]) => setLargura(e.contentRect.width))
+    const ro = new ResizeObserver(([e]) => e && setLargura(e.contentRect.width))
     ro.observe(caixa.current)
     return () => ro.disconnect()
   }, [])
@@ -112,8 +118,8 @@ export function CrisesPorDia({ crises, hoje }) {
   if (!dias.length) return null
   const maxN = Math.max(1, ...dias.map((d) => d.n))
   const w = Math.max(0, largura - PAD_D - PAD_E)
-  const x = (i) => PAD_E + (dias.length === 1 ? w / 2 : (i * w) / (dias.length - 1))
-  const y = (n) => PAD_T + (ALT - PAD_B - PAD_T) * (1 - n / maxN)
+  const x = (i: number) => PAD_E + (dias.length === 1 ? w / 2 : (i * w) / (dias.length - 1))
+  const y = (n: number) => PAD_T + (ALT - PAD_B - PAD_T) * (1 - n / maxN)
   const linha = dias.map((d, i) => `${x(i)},${y(d.n)}`).join(' ')
 
   // ~5 datas no eixo, sempre incluindo a primeira; passo em dias inteiros.
@@ -171,10 +177,10 @@ export function CrisesPorDia({ crises, hoje }) {
  * ações secundárias, porque só uma delas é o que se faz na consulta.
  * Link é um por paciente, vale 30 dias, e gerar de novo mata o anterior.
  */
-export function Compartilhar({ encerradas, paciente }) {
-  const [link, setLink] = useState(null)   // null = nenhum | linha de `relatorios`
+export function Compartilhar({ encerradas, paciente }: { encerradas: Crise[]; paciente: Paciente }) {
+  const [link, setLink] = useState<LinkRelatorio | null>(null)   // null = nenhum
   const [ocupado, setOcupado] = useState(true)
-  const [aviso, setAviso] = useState(null)
+  const [aviso, setAviso] = useState<string | null>(null)
 
   useEffect(() => {
     let vivo = true
@@ -215,17 +221,18 @@ export function Compartilhar({ encerradas, paciente }) {
       if (navigator.share) await navigator.share({ title: 'Diário da Cefaléia', text, url: alvo })
       else { await navigator.clipboard.writeText(alvo); setAviso('Link copiado.') }
     } catch (e) {
-      if (e.name !== 'AbortError') setAviso('Não foi possível compartilhar — copie o endereço acima.')
+      if (!(e instanceof Error) || e.name !== 'AbortError') setAviso('Não foi possível compartilhar — copie o endereço acima.')
     }
   }
 
   const copiar = async () => {
+    if (!url) return
     try { await navigator.clipboard.writeText(url); setAviso('Link copiado.') }
     catch { setAviso('Não foi possível copiar — selecione o endereço acima.') }
   }
 
   const revogar = async () => {
-    if (!confirm('Revogar o link? Quem já recebeu deixa de conseguir abrir.')) return
+    if (!link || !confirm('Revogar o link? Quem já recebeu deixa de conseguir abrir.')) return
     setOcupado(true)
     const { error } = await supabase.from('relatorios').delete().eq('id', link.id)
     setOcupado(false)
@@ -241,7 +248,7 @@ export function Compartilhar({ encerradas, paciente }) {
       if (navigator.share) await navigator.share({ title: 'Diário da Cefaléia', text })
       else { await navigator.clipboard.writeText(text); setAviso('Relatório copiado como texto.') }
     } catch (e) {
-      if (e.name !== 'AbortError') setAviso('Não foi possível compartilhar.')
+      if (!(e instanceof Error) || e.name !== 'AbortError') setAviso('Não foi possível compartilhar.')
     }
   }
 
@@ -257,7 +264,7 @@ export function Compartilhar({ encerradas, paciente }) {
         <>
           <div style={{ ...campoLink, wordBreak: 'break-all' }}>{url}</div>
           <div style={{ fontSize: 12, color: 'rgba(235,235,245,.45)', margin: '8px 0 0' }}>
-            Expira em {fmtDataHist(new Date(link.expira_em))} · congelado como o relatório está hoje
+            Expira em {fmtDataHist(new Date(link!.expira_em))} · congelado como o relatório está hoje
           </div>
         </>
       )}
@@ -289,13 +296,15 @@ export function Compartilhar({ encerradas, paciente }) {
   )
 }
 
-const campoLink = {
+const campoLink: CSSProperties = {
   ...campo, height: 'auto', minHeight: 44, padding: '11px 14px', fontSize: 14,
   color: 'rgba(235,235,245,.85)', display: 'flex', alignItems: 'center',
 }
 
 /** Ação secundária: texto, não botão — é o que a mantém abaixo do botão principal. */
-function Secundaria({ children, onClick, disabled, perigo }) {
+function Secundaria({ children, onClick, disabled, perigo }: {
+  children: ReactNode; onClick: () => void; disabled?: boolean; perigo?: boolean
+}) {
   return (
     <button type="button" onClick={onClick} disabled={disabled} style={{
       background: 'none', border: 'none', fontFamily: 'inherit', padding: '6px 8px',
@@ -306,7 +315,7 @@ function Secundaria({ children, onClick, disabled, perigo }) {
   )
 }
 
-export function CabecalhoRelatorio({ n, carregando }) {
+export function CabecalhoRelatorio({ n, carregando }: { n: number; carregando: boolean }) {
   return (
     <div style={{ padding: '4px 4px 2px' }}>
       <div style={eyebrow}>{carregando ? 'carregando…' : `${n} ${n === 1 ? 'crise' : 'crises'} no período`}</div>
@@ -320,7 +329,9 @@ export function SemDados() {
     sub={`Registre ao menos ${MIN_CRISES} crises para ver correlações.`} />
 }
 
-export default function Relatorio({ encerradas, carregando, paciente }) {
+export default function Relatorio(
+  { encerradas, carregando, paciente }: Pick<DadosCrises, 'encerradas' | 'carregando'> & { paciente: Paciente },
+) {
   const n = encerradas.length
   const pronto = n >= MIN_CRISES
   // Sem crises `analisar` dividiria por zero — só analisa quando há o que analisar.

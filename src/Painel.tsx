@@ -2,31 +2,34 @@
 // Nenhuma tela foi reescrita — NovaCrise, CriseAndamento, Historico, FormPaciente e os
 // painéis do Relatório são os mesmos componentes, só compostos em grid.
 import { useEffect, useRef, useState } from 'react'
-import { supabase } from './lib/supabase.js'
-import { fmtDecorrido, idade } from './format.js'
-import { card, campo, titulo, eyebrow, BotaoPrimario, BannerErro } from './ui.jsx'
-import { analisar } from './report.js'
-import { FormPaciente } from './Pacientes.jsx'
-import NovaCrise from './screens/NovaCrise.jsx'
-import CriseAndamento from './screens/CriseAndamento.jsx'
-import Historico from './screens/Historico.jsx'
+import { supabase } from './lib/supabase.ts'
+import { fmtDecorrido, idade } from './format.ts'
+import { card, campo, titulo, eyebrow, BotaoPrimario, BannerErro } from './ui.tsx'
+import { analisar } from './report.ts'
+import { FormPaciente } from './Pacientes.tsx'
+import NovaCrise from './screens/NovaCrise.tsx'
+import CriseAndamento from './screens/CriseAndamento.tsx'
+import Historico from './screens/Historico.tsx'
 import {
   MIN_CRISES, CabecalhoRelatorio, SemDados, Insight, Gatilhos, Estatisticas, CrisesPorDia,
   Compartilhar,
-} from './screens/Relatorio.jsx'
+} from './screens/Relatorio.tsx'
+import type { Casca } from './App.tsx'
+import type { Crise, Paciente } from './lib/tipos.ts'
+import type { CSSProperties, ReactNode } from 'react'
 
 // 100vh menos o padding do grid (28px em cima e embaixo), senão o documento fica maior
 // que a janela: três barras de rolagem e a sidebar sticky nunca engata.
-const COLUNA_ROLA = { minHeight: 0, maxHeight: 'calc(100vh - 56px)', overflowY: 'auto', paddingRight: 4 }
+const COLUNA_ROLA: CSSProperties = { minHeight: 0, maxHeight: 'calc(100vh - 56px)', overflowY: 'auto', paddingRight: 4 }
 
 /** Folha sobreposta: registro e formulários não roubam espaço do dashboard. */
-function Sobreposto({ children, fechar }) {
+function Sobreposto({ children, fechar }: { children: ReactNode; fechar: () => void }) {
   // Só fecha se o gesto começou e terminou no fundo: selecionar texto no formulário e
   // soltar o mouse fora não pode descartar o rascunho de uma crise.
   const doFundo = useRef(false)
 
   useEffect(() => {
-    const esc = (e) => e.key === 'Escape' && fechar()
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && fechar()
     addEventListener('keydown', esc)
     return () => removeEventListener('keydown', esc)
   }, [fechar])
@@ -56,7 +59,7 @@ function Sobreposto({ children, fechar }) {
   )
 }
 
-function ItemPaciente({ p, sel, onClick }) {
+function ItemPaciente({ p, sel, onClick }: { p: Paciente; sel: boolean; onClick: () => void }) {
   const anos = idade(p.data_nascimento)
   return (
     <button type="button" onClick={onClick} aria-current={sel ? 'true' : undefined} style={{
@@ -83,7 +86,7 @@ function ItemPaciente({ p, sel, onClick }) {
 }
 
 /** Crise aberta na sidebar: o cronômetro corre aqui também, para não precisar abrir o painel. */
-function EmCurso({ ativa, abrir }) {
+function EmCurso({ ativa, abrir }: { ativa: Crise; abrir: () => void }) {
   const [agora, setAgora] = useState(() => Date.now())
   useEffect(() => {
     const t = setInterval(() => setAgora(Date.now()), 1000)
@@ -108,8 +111,9 @@ function EmCurso({ ativa, abrir }) {
   )
 }
 
-export default function Painel({ pac, dados, erro, dispensar }) {
-  const [painel, setPainel] = useState(null) // null | 'nova' | 'andamento' | 'novo-paciente' | paciente
+export default function Painel({ pac, dados, erro, dispensar }: Casca) {
+  // null = dashboard limpo; string = uma folha; um paciente = editando esse paciente.
+  const [painel, setPainel] = useState<'nova' | 'andamento' | 'novo-paciente' | Paciente | null>(null)
   const { ativa, encerradas, crises, carregando } = dados
   const paciente = pac.selecionado
   const fechar = () => setPainel(null)
@@ -195,7 +199,7 @@ export default function Painel({ pac, dados, erro, dispensar }) {
       )}
       {painel === 'andamento' && ativa && (
         <Sobreposto fechar={fechar}>
-          <CriseAndamento key={ativa.id} {...dados} irPara={fechar} />
+          <CriseAndamento key={ativa.id} {...dados} ativa={ativa} irPara={fechar} />
         </Sobreposto>
       )}
       {painel === 'novo-paciente' && (
@@ -203,7 +207,7 @@ export default function Painel({ pac, dados, erro, dispensar }) {
           <FormPaciente onSalvar={pac.criar} onCancelar={fechar} />
         </Sobreposto>
       )}
-      {painel && painel.id && (
+      {painel !== null && typeof painel === 'object' && (
         <Sobreposto fechar={fechar}>
           <FormPaciente inicial={painel} onSalvar={(campos) => pac.salvar(painel.id, campos)} onCancelar={fechar} />
         </Sobreposto>

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { fmtEyebrow, fmtHora } from '../format.js'
-import { FORM_PADRAO, paraBanco } from '../tokens.js'
-import { titulo, eyebrow, legenda, BotaoPrimario } from '../ui.jsx'
-import CamposCrise from '../CamposCrise.jsx'
+import { fmtEyebrow, fmtHora } from '../format.ts'
+import { FORM_PADRAO, paraBanco } from '../tokens.ts'
+import { titulo, eyebrow, legenda, BotaoPrimario } from '../ui.tsx'
+import CamposCrise from '../CamposCrise.tsx'
+import type { DadosCrises } from '../useCrises.ts'
 
-export default function NovaCrise({ iniciar }) {
+export default function NovaCrise({ iniciar }: Pick<DadosCrises, 'iniciar'>) {
   const [form, setForm] = useState(FORM_PADRAO)
   const [agora, setAgora] = useState(() => new Date())
   const [ocupado, setOcupado] = useState(false)

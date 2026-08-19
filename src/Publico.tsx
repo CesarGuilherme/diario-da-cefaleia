@@ -2,12 +2,14 @@
 // relatório — o visitante não fala com `crises` nem com `pacientes`, e sim com a função
 // `relatorio_publico`, que devolve o snapshot congelado de um token válido.
 import { useEffect, useState } from 'react'
-import { supabaseAnon, faltaConfig } from './lib/supabase.js'
-import { analisar } from './report.js'
-import { fmtDataHist } from './format.js'
-import { card, titulo, eyebrow, legenda } from './ui.jsx'
-import { CriseCard } from './screens/Historico.jsx'
-import { MIN_CRISES, Insight, Gatilhos, CrisesPorDia, Estatisticas } from './screens/Relatorio.jsx'
+import { supabaseAnon, faltaConfig } from './lib/supabase.ts'
+import { analisar } from './report.ts'
+import { fmtDataHist } from './format.ts'
+import { card, titulo, eyebrow, legenda } from './ui.tsx'
+import { CriseCard } from './screens/Historico.tsx'
+import { MIN_CRISES, Insight, Gatilhos, CrisesPorDia, Estatisticas } from './screens/Relatorio.tsx'
+import type { Snapshot } from './lib/tipos.ts'
+import type { CSSProperties } from 'react'
 
 const AURORA = [
   'radial-gradient(circle at 15% 8%, rgba(124,108,246,.38), transparent 42%)',
@@ -15,14 +17,14 @@ const AURORA = [
   'radial-gradient(circle at 60% 95%, rgba(124,108,246,.18), transparent 50%)',
 ]
 
-const fundo = {
+const fundo: CSSProperties = {
   minHeight: '100%', backgroundImage: AURORA.join(','),
   backgroundColor: '#0a0a13', backgroundAttachment: 'fixed',
 }
 
-export default function Publico({ token }) {
-  const [estado, setEstado] = useState('carregando') // carregando | invalido | dados
-  const [dados, setDados] = useState(null)
+export default function Publico({ token }: { token: string }) {
+  const [estado, setEstado] = useState<'carregando' | 'invalido' | 'dados'>('carregando')
+  const [dados, setDados] = useState<Snapshot | null>(null)
 
   useEffect(() => {
     if (faltaConfig) { setEstado('invalido'); return }
@@ -31,7 +33,8 @@ export default function Publico({ token }) {
       if (!vivo) return
       // Token errado e token vencido dão o mesmo `null` — a página não conta qual dos dois.
       if (error || !data) setEstado('invalido')
-      else { setDados(data); setEstado('dados') }
+      // O jsonb volta como Json: quem garante a forma é snapshotRelatorio, que o gravou.
+      else { setDados(data as unknown as Snapshot); setEstado('dados') }
     })
     return () => { vivo = false }
   }, [token])
@@ -41,7 +44,7 @@ export default function Publico({ token }) {
       <div style={{ maxWidth: 760, margin: '0 auto', boxSizing: 'border-box', padding: '48px 16px 64px' }}>
         {estado === 'carregando' && <div style={legenda}>Carregando relatório…</div>}
         {estado === 'invalido' && <LinkInvalido />}
-        {estado === 'dados' && <Conteudo dados={dados} />}
+        {estado === 'dados' && dados && <Conteudo dados={dados} />}
       </div>
     </div>
   )
@@ -59,7 +62,7 @@ function LinkInvalido() {
   )
 }
 
-function Conteudo({ dados }) {
+function Conteudo({ dados }: { dados: Snapshot }) {
   const { paciente, crises, gerado_em } = dados
   // O "hoje" do relatório é a data em que ele foi gerado: o gráfico não estica com o
   // relógio de quem abre, e os números batem com os da tela de quem compartilhou.
@@ -81,7 +84,7 @@ function Conteudo({ dados }) {
         </h1>
         <div style={{ ...eyebrow, marginTop: 4 }}>
           {crises.length} {crises.length === 1 ? 'crise registrada' : 'crises registradas'}
-          {crises.length > 0 && ` · de ${fmtDataHist(new Date(crises.at(-1).inicio))} a ${fmtDataHist(new Date(crises[0].inicio))}`}
+          {crises.length > 0 && ` · de ${fmtDataHist(new Date(crises.at(-1)!.inicio))} a ${fmtDataHist(new Date(crises[0]!.inicio))}`}
         </div>
       </header>
 

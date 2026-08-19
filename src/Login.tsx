@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { supabase } from './lib/supabase.js'
-import { card, campo, sectionLabel, BotaoPrimario } from './ui.jsx'
+import type { CSSProperties, FormEvent } from 'react'
+import { supabase } from './lib/supabase.ts'
+import { card, campo, sectionLabel, BotaoPrimario } from './ui.tsx'
 
-const botaoSocial = {
+const botaoSocial: CSSProperties = {
   width: '100%', height: 52, borderRadius: 999, cursor: 'pointer',
   background: 'rgba(120,120,128,.24)', backdropFilter: 'blur(12px) saturate(180%)',
   border: '.5px solid rgba(255,255,255,.18)',
@@ -24,14 +25,14 @@ function LogoGoogle() {
 }
 
 export default function Login() {
-  const [modo, setModo] = useState('entrar') // 'entrar' | 'cadastrar'
+  const [modo, setModo] = useState<'entrar' | 'cadastrar'>('entrar')
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
-  const [msg, setMsg] = useState(null)
+  const [msg, setMsg] = useState<{ erro?: boolean; texto: string } | null>(null)
   const [ocupado, setOcupado] = useState(false)
   const verbo = modo === 'entrar' ? 'Entrar' : 'Criar conta'
 
-  const social = async (provider) => {
+  const social = async (provider: 'google') => {
     setMsg(null)
     const { error } = await supabase.auth.signInWithOAuth({
       provider, options: { redirectTo: window.location.origin },
@@ -39,7 +40,7 @@ export default function Login() {
     if (error) setMsg({ erro: true, texto: error.message })
   }
 
-  const porEmail = async (e) => {
+  const porEmail = async (e: FormEvent) => {
     e.preventDefault()
     setMsg(null)
     setOcupado(true)

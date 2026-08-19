@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import type { Database } from './database.types.ts'
 
 const url = import.meta.env.VITE_SUPABASE_URL
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -10,7 +11,7 @@ export const faltaConfig = !url || !anonKey
 // preta, sem pista nenhuma. Por isso o cliente é criado com valores de fachada e quem
 // mostra o erro é a UI.
 // A anon key é pública por design — quem protege os dados é a RLS da tabela crises.
-export const supabase = createClient(
+export const supabase = createClient<Database>(
   url || 'https://fachada.supabase.co',
   anonKey || 'fachada',
 )
@@ -19,7 +20,7 @@ export const supabase = createClient(
 // sessão do dono no localStorage e as queries sairiam autenticadas — o relatório abriria
 // para você e daria vazio para o médico. `detectSessionInUrl: false` evita que o token da
 // URL do relatório seja confundido com um callback de OAuth.
-export const supabaseAnon = createClient(
+export const supabaseAnon = createClient<Database>(
   url || 'https://fachada.supabase.co',
   anonKey || 'fachada',
   { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } },

@@ -1,36 +1,50 @@
+import type { CSSProperties, ReactNode } from 'react'
+
 // Estilos e componentes compartilhados. Valores copiados verbatim do protótipo do handoff —
 // não "aproximar" nenhuma sombra ou gradiente daqui, é o que garante paridade com o iOS.
 
-export const card = {
+export const card: CSSProperties = {
   position: 'relative', borderRadius: 26, background: 'rgba(255,255,255,.07)',
   border: '.5px solid rgba(255,255,255,.14)',
   boxShadow: 'inset 1px 1px 1px rgba(255,255,255,.10),0 10px 28px rgba(0,0,0,.28)',
   backdropFilter: 'blur(24px) saturate(160%)', padding: 16, boxSizing: 'border-box',
 }
 
-export const sectionLabel = {
+export const sectionLabel: CSSProperties = {
   fontSize: 12, fontWeight: 600, letterSpacing: '.07em', textTransform: 'uppercase',
   color: 'rgba(235,235,245,.5)', marginBottom: 10,
 }
 
-export const trilho = {
+export const trilho: CSSProperties = {
   display: 'flex', gap: 5, padding: 4, borderRadius: 999,
   background: 'rgba(0,0,0,.28)', border: '.5px solid rgba(255,255,255,.08)',
 }
 
-export const campo = {
+export const campo: CSSProperties = {
   width: '100%', boxSizing: 'border-box', height: 44, borderRadius: 14,
   background: 'rgba(0,0,0,.28)', border: '.5px solid rgba(255,255,255,.1)',
   // 16px é o mínimo: abaixo disso o iOS dá zoom no foco e não volta (vira scroll lateral).
   padding: '0 14px', fontSize: 16, color: '#fff', fontFamily: 'inherit', outline: 'none',
 }
 
-export const titulo = { fontSize: 30, fontWeight: 700, color: '#fff', letterSpacing: '.2px' }
-export const eyebrow = { fontSize: 13, color: 'rgba(235,235,245,.55)', fontWeight: 500 }
-export const legenda = { textAlign: 'center', fontSize: 12, color: 'rgba(235,235,245,.4)' }
+export const titulo: CSSProperties = { fontSize: 30, fontWeight: 700, color: '#fff', letterSpacing: '.2px' }
+export const eyebrow: CSSProperties = { fontSize: 13, color: 'rgba(235,235,245,.55)', fontWeight: 500 }
+export const legenda: CSSProperties = { textAlign: 'center', fontSize: 12, color: 'rgba(235,235,245,.4)' }
 
 /** Capsule segmentada. `palette` opcional dá gradiente por item (intensidade, alívio). */
-export function Segmented({ opcoes, valor, onChange, palette, style, fontSize = 15, padding = '9px 0' }) {
+type SegmentedProps<T extends string> = {
+  opcoes: readonly T[]
+  valor: T | null
+  onChange: (v: T) => void
+  palette?: Record<string, { grad: string; fg: string; sh: string } | undefined>
+  style?: CSSProperties
+  fontSize?: number
+  padding?: string
+}
+
+export function Segmented<T extends string>(
+  { opcoes, valor, onChange, palette, style, fontSize = 15, padding = '9px 0' }: SegmentedProps<T>,
+) {
   return (
     <div style={{ ...trilho, ...style }}>
       {opcoes.map((o) => {
@@ -54,7 +68,9 @@ export function Segmented({ opcoes, valor, onChange, palette, style, fontSize = 
   )
 }
 
-export function Chip({ label, selecionado, onClick }) {
+export function Chip({ label, selecionado, onClick }: {
+  label: string; selecionado: boolean; onClick: () => void
+}) {
   return (
     <button type="button" onClick={onClick} aria-pressed={selecionado}
       style={{
@@ -74,7 +90,13 @@ export function Chip({ label, selecionado, onClick }) {
   )
 }
 
-export function BotaoPrimario({ children, onClick, disabled, verde, type = 'button' }) {
+export function BotaoPrimario({ children, onClick, disabled, verde, type = 'button' }: {
+  children: ReactNode
+  onClick?: () => void
+  disabled?: boolean
+  verde?: boolean
+  type?: 'button' | 'submit'
+}) {
   return (
     <button type={type} onClick={onClick} disabled={disabled}
       style={{
@@ -97,7 +119,11 @@ export function BotaoPrimario({ children, onClick, disabled, verde, type = 'butt
 
 /** Banner de erro, um só para os dois layouts (no desktop atravessa o grid).
  *  Diz "dispensar" e não "toque para dispensar": no dashboard se usa mouse. */
-export function BannerErro({ erro, dispensar, style }) {
+export function BannerErro({ erro, dispensar, style }: {
+  erro: string | null
+  dispensar: () => void
+  style?: CSSProperties
+}) {
   if (!erro) return null
   return (
     <div role="alert" onClick={dispensar} style={{
@@ -108,7 +134,7 @@ export function BannerErro({ erro, dispensar, style }) {
   )
 }
 
-export function CardVazio({ titulo: t, sub }) {
+export function CardVazio({ titulo: t, sub }: { titulo: string; sub: string }) {
   return (
     <div style={{ ...card, borderRadius: 24, padding: '36px 20px', textAlign: 'center' }}>
       <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>{t}</div>

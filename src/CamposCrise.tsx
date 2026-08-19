@@ -1,12 +1,14 @@
 // Os campos de uma crise, extraídos verbatim da NovaCrise para serem os mesmos
 // no registro e na edição posterior — um formulário só, nada de dois que divergem.
-import { fmtSono } from './format.js'
-import { INT, INTENSIDADES, LOCALIZACOES, CARATERES, SINTOMAS, GATILHOS } from './tokens.js'
-import { card, sectionLabel, campo, Segmented, Chip } from './ui.jsx'
+import { fmtSono } from './format.ts'
+import { INT, INTENSIDADES, LOCALIZACOES, CARATERES, SINTOMAS, GATILHOS } from './tokens.ts'
+import { card, sectionLabel, campo, Segmented, Chip } from './ui.tsx'
+import type { Form } from './lib/tipos.ts'
 
-export default function CamposCrise({ form, setForm }) {
-  const set = (k, v) => setForm({ ...form, [k]: v })
-  const alterna = (k, v) => set(k, form[k].includes(v) ? form[k].filter((x) => x !== v) : [...form[k], v])
+export default function CamposCrise({ form, setForm }: { form: Form; setForm: (f: Form) => void }) {
+  const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm({ ...form, [k]: v })
+  const alterna = (k: 'sintomas' | 'gatilhos', v: string) =>
+    set(k, form[k].includes(v) ? form[k].filter((x) => x !== v) : [...form[k], v])
 
   return (
     <>
