@@ -46,8 +46,8 @@ export const SINTOMAS = ['Náusea', 'Vômito', 'Fotofobia', 'Fonofobia', 'Aura']
 // O iOS guarda só a chave curta; o placeholder ensina a separar por vírgula, que é o
 // que torna os itens comparáveis entre crises sem nenhuma heurística de linguagem.
 export const GATILHOS = [
-  ['Estresse (prova, escola)', 'Estresse', 'Ex.: prova, briga, apresentação'],
-  ['Alimentação (pulou refeição)', 'Alimentação', 'Ex.: leite, chocolate, queijo'],
+  ['Estresse', 'Estresse', 'Ex.: prova, briga, apresentação'],
+  ['Alimentação', 'Alimentação', 'Ex.: leite, chocolate, queijo'],
   ['Mudança climática', 'Mudança climática', 'Ex.: calor forte, chuva, frente fria'],
 ]
 
