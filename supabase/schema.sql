@@ -75,7 +75,7 @@ create table relatorios (
   paciente_id  uuid not null references pacientes(id) on delete cascade,
   dados        jsonb not null,
   criado_em    timestamptz not null default now(),
-  expira_em    timestamptz not null default now() + interval '30 days'
+  expira_em    timestamptz not null default now() + interval '7 days'
 );
 
 create index relatorios_paciente on relatorios (paciente_id);

@@ -56,7 +56,7 @@ function LinkInvalido() {
       <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Link indisponível</div>
       <div style={{ fontSize: 14, lineHeight: 1.5, color: 'rgba(235,235,245,.7)' }}>
         Este relatório expirou ou o endereço está incorreto. Peça um link novo a quem
-        compartilhou — eles valem 30 dias.
+        compartilhou — eles valem 7 dias.
       </div>
     </section>
   )

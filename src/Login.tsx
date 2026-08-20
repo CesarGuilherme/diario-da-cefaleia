@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { CSSProperties, FormEvent } from 'react'
 import { supabase } from './lib/supabase.ts'
 import { card, campo, sectionLabel, BotaoPrimario } from './ui.tsx'
+import { falhasSenha, senhaValida, REGRAS_SENHA } from './senha.ts'
 
 const botaoSocial: CSSProperties = {
   width: '100%', height: 52, borderRadius: 999, cursor: 'pointer',
@@ -24,6 +25,11 @@ function LogoGoogle() {
   )
 }
 
+const linkFantasma: CSSProperties = {
+  background: 'none', border: 'none', fontFamily: 'inherit', fontSize: 13,
+  color: '#8b7cfc', cursor: 'pointer', padding: 4,
+}
+
 export default function Login() {
   const [modo, setModo] = useState<'entrar' | 'cadastrar'>('entrar')
   const [email, setEmail] = useState('')
@@ -40,17 +46,40 @@ export default function Login() {
     if (error) setMsg({ erro: true, texto: error.message })
   }
 
+  const recuperar = async () => {
+    if (!email) { setMsg({ erro: true, texto: 'Informe o e-mail para redefinir a senha.' }); return }
+    setOcupado(true); setMsg(null)
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin })
+    setOcupado(false)
+    if (error) setMsg({ erro: true, texto: error.message })
+    else setMsg({ texto: 'Se esta conta existir, enviamos um link para redefinir a senha.' })
+  }
+
   const porEmail = async (e: FormEvent) => {
     e.preventDefault()
     setMsg(null)
+    if (modo === 'cadastrar') {
+      const falta = falhasSenha(senha)
+      if (falta.length) {
+        setMsg({ erro: true, texto: `A senha precisa de ${falta.join(', ')}.` })
+        return
+      }
+    }
     setOcupado(true)
-    const { error } = modo === 'entrar'
-      ? await supabase.auth.signInWithPassword({ email, password: senha })
-      : await supabase.auth.signUp({ email, password: senha, options: { emailRedirectTo: window.location.origin } })
+    if (modo === 'entrar') {
+      const { error } = await supabase.auth.signInWithPassword({ email, password: senha })
+      setOcupado(false)
+      if (error) setMsg({ erro: true, texto: error.message })
+      return
+    }
+    const { error } = await supabase.auth.signUp({
+      email, password: senha, options: { emailRedirectTo: window.location.origin },
+    })
     setOcupado(false)
-    if (error) setMsg({ erro: true, texto: error.message })
-    else if (modo === 'cadastrar') setMsg({ texto: 'Confira seu e-mail para confirmar a conta.' })
-    // No modo entrar, o onAuthStateChange do App troca a tela sozinho.
+    if (error) { setMsg({ erro: true, texto: error.message }); return }
+    // Mesma frase para conta nova e e-mail já usado: o GoTrue devolve 200 nos dois
+    // casos e o identities vazio denunciaria quem já tem cadastro.
+    setMsg({ texto: 'Se este e-mail puder receber, enviamos um link. Já tem conta? Entre ou redefina a senha.' })
   }
 
   return (
@@ -85,11 +114,13 @@ export default function Login() {
             </div>
             <div>
               <label htmlFor="senha" style={sectionLabel}>Senha</label>
-              <input id="senha" type="password" required minLength={6} style={campo}
+              <input id="senha" type="password" required minLength={modo === 'cadastrar' ? 8 : 1} style={campo}
                 autoComplete={modo === 'entrar' ? 'current-password' : 'new-password'}
-                value={senha} onChange={(e) => setSenha(e.target.value)} placeholder="mínimo 6 caracteres" />
+                value={senha} onChange={(e) => setSenha(e.target.value)}
+                placeholder={modo === 'cadastrar' ? 'Aa1! · 8 caracteres' : ''} />
+              {modo === 'cadastrar' && <ValidadorSenha senha={senha} />}
             </div>
-            <BotaoPrimario type="submit" disabled={ocupado}>{verbo}</BotaoPrimario>
+            <BotaoPrimario type="submit" disabled={ocupado || (modo === 'cadastrar' && !senhaValida(senha))}>{verbo}</BotaoPrimario>
           </form>
 
           {msg && (
@@ -98,13 +129,84 @@ export default function Login() {
             </div>
           )}
 
+          <button type="button" onClick={recuperar} disabled={ocupado} style={linkFantasma}>
+            Esqueci a senha
+          </button>
+
           <button type="button"
             onClick={() => { setModo(modo === 'entrar' ? 'cadastrar' : 'entrar'); setMsg(null) }}
-            style={{ background: 'none', border: 'none', fontFamily: 'inherit', fontSize: 13, color: '#8b7cfc', cursor: 'pointer', padding: 4 }}>
+            style={linkFantasma}>
             {modo === 'entrar' ? 'Não tem conta? Criar uma' : 'Já tem conta? Entrar'}
           </button>
         </div>
       </div>
     </div>
+  )
+}
+
+/** Sessão de `PASSWORD_RECOVERY`: o link do e-mail já autenticou; só falta a senha nova. */
+export function RedefinirSenha({ onOk }: { onOk: () => void }) {
+  const [senha, setSenha] = useState('')
+  const [ocupado, setOcupado] = useState(false)
+  const [msg, setMsg] = useState<{ erro?: boolean; texto: string } | null>(null)
+
+  const salvar = async (e: FormEvent) => {
+    e.preventDefault()
+    const falta = falhasSenha(senha)
+    if (falta.length) { setMsg({ erro: true, texto: `A senha precisa de ${falta.join(', ')}.` }); return }
+    setOcupado(true); setMsg(null)
+    const { error } = await supabase.auth.updateUser({ password: senha })
+    setOcupado(false)
+    if (error) setMsg({ erro: true, texto: error.message })
+    else onOk()
+  }
+
+  return (
+    <div style={{ minHeight: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 16px', boxSizing: 'border-box' }}>
+      <form onSubmit={salvar} style={{ ...card, width: '100%', maxWidth: 380, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ fontSize: 18, fontWeight: 700 }}>Nova senha</div>
+        <label>
+          <div style={sectionLabel}>Senha</div>
+          <input type="password" required minLength={8} autoComplete="new-password" style={campo}
+            value={senha} onChange={(e) => setSenha(e.target.value)} placeholder="Aa1! · 8 caracteres" />
+        </label>
+        <ValidadorSenha senha={senha} />
+        <BotaoPrimario type="submit" disabled={ocupado || !senhaValida(senha)}>Salvar senha</BotaoPrimario>
+        {msg && (
+          <div role="status" style={{ fontSize: 13, textAlign: 'center', color: msg.erro ? '#ffb5b0' : '#a9f0cd' }}>
+            {msg.texto}
+          </div>
+        )}
+      </form>
+    </div>
+  )
+}
+
+function ValidadorSenha({ senha }: { senha: string }) {
+  return (
+    <ul aria-live="polite" style={{
+      listStyle: 'none', margin: '8px 0 0', padding: 0,
+      display: 'flex', flexDirection: 'column', gap: 5,
+    }}>
+      {REGRAS_SENHA.map((r) => {
+        const ok = r.ok(senha)
+        return (
+          <li key={r.id} style={{
+            display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 600,
+            color: ok ? '#a9f0cd' : 'rgba(235,235,245,.38)',
+            transition: 'color .15s ease',
+          }}>
+            <span aria-hidden="true" style={{
+              width: 14, height: 14, borderRadius: 999, flex: 'none',
+              display: 'grid', placeItems: 'center', fontSize: 9, lineHeight: 1,
+              background: ok ? 'rgba(48,209,88,.28)' : 'rgba(120,120,128,.18)',
+              border: ok ? '.5px solid rgba(48,209,88,.45)' : '.5px solid rgba(255,255,255,.12)',
+              color: ok ? '#30d158' : 'rgba(235,235,245,.35)',
+            }}>{ok ? '✓' : ''}</span>
+            {r.label}
+          </li>
+        )
+      })}
+    </ul>
   )
 }

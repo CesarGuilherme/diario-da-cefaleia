@@ -7,7 +7,7 @@ import type { DadosPacientes } from './Pacientes.tsx'
 import { useDesktop } from './useDesktop.ts'
 import { BannerErro } from './ui.tsx'
 import Painel from './Painel.tsx'
-import Login from './Login.tsx'
+import Login, { RedefinirSenha } from './Login.tsx'
 import NovaCrise from './screens/NovaCrise.tsx'
 import CriseAndamento from './screens/CriseAndamento.tsx'
 import Historico from './screens/Historico.tsx'
@@ -39,10 +39,15 @@ export type Casca = {
 export default function App() {
   // undefined = ainda carregando; null = deslogado
   const [sessao, setSessao] = useState<Session | null | undefined>(undefined)
+  const [recuperando, setRecuperando] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSessao(data.session))
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSessao(s))
+    const { data: sub } = supabase.auth.onAuthStateChange((e, s) => {
+      if (e === 'PASSWORD_RECOVERY') setRecuperando(true)
+      if (e === 'SIGNED_OUT') setRecuperando(false)
+      setSessao(s)
+    })
     return () => sub.subscription.unsubscribe()
   }, [])
 
@@ -58,6 +63,7 @@ export default function App() {
   if (faltaConfig) return <div style={fundo}><ErroConfig /></div>
   if (sessao === undefined) return <div style={fundo} />
   if (!sessao) return <div style={fundo}><Login /></div>
+  if (recuperando) return <div style={fundo}><RedefinirSenha onOk={() => setRecuperando(false)} /></div>
   // key no uid: trocar de conta sem passar por deslogado reaproveitaria os hooks e
   // mostraria o paciente do usuário anterior por um render (espelha .id(userId) no iOS).
   return <Diario key={sessao.user.id} userId={sessao.user.id} />

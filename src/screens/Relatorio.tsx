@@ -175,7 +175,7 @@ export function CrisesPorDia({ crises, hoje }: { crises: CriseSnapshot[]; hoje?:
  * Compartilhar com o médico: um card só. O botão grande é sempre a ação principal — gera o
  * link na primeira vez e depois envia. Copiar, regenerar, revogar e o relatório em texto são
  * ações secundárias, porque só uma delas é o que se faz na consulta.
- * Link é um por paciente, vale 30 dias, e gerar de novo mata o anterior.
+ * Link é um por paciente, vale 7 dias, e gerar de novo mata o anterior.
  */
 export function Compartilhar({ encerradas, paciente }: { encerradas: Crise[]; paciente: Paciente }) {
   const [link, setLink] = useState<LinkRelatorio | null>(null)   // null = nenhum

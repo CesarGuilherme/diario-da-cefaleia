@@ -107,9 +107,9 @@ também o tem.
 
 "Gerar link" grava em `relatorios` um **snapshot** do relatório (`snapshotRelatorio`, em
 `report.js`) e devolve `/r/<id do snapshot>`. O id é o token: uuid v4, 122 bits, e não existe
-outra coluna para adivinhar. É um por paciente — gerar de novo apaga o anterior — e vale 30 dias.
+outra coluna para adivinhar. É um por paciente — gerar de novo apaga o anterior — e vale 7 dias.
 
-Snapshot, não espelho: o médico vê daqui a três semanas o mesmo relatório que você mandou, e
+Snapshot, não espelho: o médico vê daqui a uma semana o mesmo relatório que você mandou, e
 crise registrada depois não vaza para um link já enviado. O `gerado_em` também é o "hoje" que
 alimenta o gráfico, para a linha não esticar com o relógio de quem abre.
 
