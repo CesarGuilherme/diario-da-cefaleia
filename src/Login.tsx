@@ -182,7 +182,8 @@ export function RedefinirSenha({ onOk }: { onOk: () => void }) {
   )
 }
 
-function ValidadorSenha({ senha }: { senha: string }) {
+/** Checklist ao vivo da senha. Exportado: os Ajustes mostram o mesmo ao trocar de senha. */
+export function ValidadorSenha({ senha }: { senha: string }) {
   return (
     <ul aria-live="polite" style={{
       listStyle: 'none', margin: '8px 0 0', padding: 0,

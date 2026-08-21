@@ -142,3 +142,22 @@ export function CardVazio({ titulo: t, sub }: { titulo: string; sub: string }) {
     </div>
   )
 }
+
+/** Ação secundária: texto, não botão — é o que a mantém abaixo da ação principal.
+ *  `perigo` é o vermelho de ação destrutiva (revogar link, excluir conta). */
+export function Secundaria({ children, onClick, disabled, perigo, style }: {
+  children: ReactNode
+  onClick: () => void
+  disabled?: boolean
+  perigo?: boolean
+  style?: CSSProperties
+}) {
+  return (
+    <button type="button" onClick={onClick} disabled={disabled} style={{
+      background: 'none', border: 'none', fontFamily: 'inherit', padding: '6px 8px',
+      fontSize: 13, cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.5 : 1,
+      color: perigo ? 'rgba(255,159,154,.85)' : 'rgba(235,235,245,.55)',
+      textDecoration: 'underline', textUnderlineOffset: 3, ...style,
+    }}>{children}</button>
+  )
+}

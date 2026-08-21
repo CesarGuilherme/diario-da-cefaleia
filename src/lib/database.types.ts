@@ -78,6 +78,7 @@ export type Database = {
           data_nascimento: string | null
           id: string
           nome: string
+          sou_eu: boolean
           user_id: string
         }
         Insert: {
@@ -85,6 +86,7 @@ export type Database = {
           data_nascimento?: string | null
           id?: string
           nome: string
+          sou_eu?: boolean
           user_id?: string
         }
         Update: {
@@ -92,6 +94,7 @@ export type Database = {
           data_nascimento?: string | null
           id?: string
           nome?: string
+          sou_eu?: boolean
           user_id?: string
         }
         Relationships: []
@@ -134,6 +137,7 @@ export type Database = {
     }
     Views: { [_ in never]: never }
     Functions: {
+      definir_sou_eu: { Args: { pid: string }; Returns: undefined }
       relatorio_publico: { Args: { token: string }; Returns: Json }
     }
     Enums: { [_ in never]: never }

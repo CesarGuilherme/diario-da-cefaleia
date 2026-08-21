@@ -8,10 +8,13 @@ import { useAoVoltar } from './sync.ts'
 import type { Paciente } from './lib/tipos.ts'
 import type { FormEvent } from 'react'
 
-/** Campos editáveis de um paciente — o que o form devolve. */
-export type CamposPaciente = Pick<Paciente, 'nome' | 'data_nascimento'>
+/** Campos editáveis de um paciente — o que o form devolve.
+ *  `sou_eu` não está no form: quem marca é a tela de Ajustes, uma escolha da conta. */
+export type CamposPaciente = Pick<Paciente, 'nome' | 'data_nascimento'> & { sou_eu?: boolean }
 
-const chaveLocal = (userId: string) => `paciente:${userId}`
+/** Onde fica o paciente escolhido neste aparelho. Exportada porque apagar a conta
+ *  também apaga isto — senão a próxima conta neste browser herdava a escolha da anterior. */
+export const chaveLocal = (userId: string) => `paciente:${userId}`
 
 export type DadosPacientes = ReturnType<typeof usePacientes>
 
@@ -52,6 +55,18 @@ export function usePacientes(userId: string) {
     return true
   }, [escolher])
 
+  /** Quem, entre os pacientes da conta, é o próprio dono dela. `null` = ninguém.
+   *  Marcar vai pela função do banco (troca as duas linhas numa transação só); desmarcar
+   *  é um update comum, porque limpar não pode cruzar com o índice único. */
+  const definirSouEu = useCallback(async (pid: string | null) => {
+    const { error } = pid
+      ? await supabase.rpc('definir_sou_eu', { pid })
+      : await supabase.from('pacientes').update({ sou_eu: false }).eq('sou_eu', true)
+    if (error) { setErro(error.message); return false }
+    await carregar()
+    return true
+  }, [carregar])
+
   const salvar = useCallback(async (pid: string, campos: CamposPaciente) => {
     const { data, error } = await supabase.from('pacientes')
       .update(campos).eq('id', pid).select().single()
@@ -63,7 +78,7 @@ export function usePacientes(userId: string) {
   // Se o id guardado no localStorage não existe mais (apagado em outro device), cai no primeiro.
   const selecionado = pacientes.find((p) => p.id === id) ?? pacientes[0] ?? null
 
-  return { pacientes, selecionado, carregando, erro, setErro, escolher, criar, salvar }
+  return { pacientes, selecionado, carregando, erro, setErro, escolher, criar, salvar, definirSouEu }
 }
 
 /** Form de paciente. Sem `inicial` = criando; com = editando. */
@@ -133,7 +148,9 @@ export function BarraPaciente({ pacientes, selecionado, escolher, onNovo, onEdit
         onChange={(e) => (e.target.value === 'novo' ? onNovo() : escolher(e.target.value))}
         style={{ ...campo, flex: 1, height: 40, fontWeight: 600, appearance: 'none' }}>
         {pacientes.map((p) => (
-          <option key={p.id} value={p.id} style={{ color: '#000' }}>{p.nome}</option>
+          <option key={p.id} value={p.id} style={{ color: '#000' }}>
+            {p.nome}{p.sou_eu ? ' (você)' : ''}
+          </option>
         ))}
         <option value="novo" style={{ color: '#000' }}>+ Novo paciente…</option>
       </select>

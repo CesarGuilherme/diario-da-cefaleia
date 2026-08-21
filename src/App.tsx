@@ -12,9 +12,10 @@ import NovaCrise from './screens/NovaCrise.tsx'
 import CriseAndamento from './screens/CriseAndamento.tsx'
 import Historico from './screens/Historico.tsx'
 import Relatorio from './screens/Relatorio.tsx'
+import Ajustes from './screens/Ajustes.tsx'
 import type { Paciente } from './lib/tipos.ts'
 import type { CSSProperties } from 'react'
-import type { Session } from '@supabase/supabase-js'
+import type { Session, User } from '@supabase/supabase-js'
 
 const AURORA = [
   'radial-gradient(circle at 15% 8%, rgba(124,108,246,.38), transparent 42%)',
@@ -24,12 +25,15 @@ const AURORA = [
 // O 4º gradiente só aparece com crise aberta — junto com a aba vermelha, é o aviso do app.
 const AURORA_ATIVA = 'radial-gradient(circle at 50% 0%, rgba(255,69,58,.30), transparent 45%)'
 
-const ABAS = [['Nova', 'nova'], ['Histórico', 'historico'], ['Relatório', 'relatorio']] as const
+const ABAS = [
+  ['Nova', 'nova'], ['Histórico', 'historico'], ['Relatório', 'relatorio'], ['Ajustes', 'ajustes'],
+] as const
 
 type Tela = (typeof ABAS)[number][1]
 
 /** O que a casca (telefone ou dashboard) recebe pronto do Diario. */
 export type Casca = {
+  user: User
   pac: DadosPacientes
   dados: DadosCrises
   erro: string | null
@@ -66,7 +70,7 @@ export default function App() {
   if (recuperando) return <div style={fundo}><RedefinirSenha onOk={() => setRecuperando(false)} /></div>
   // key no uid: trocar de conta sem passar por deslogado reaproveitaria os hooks e
   // mostraria o paciente do usuário anterior por um render (espelha .id(userId) no iOS).
-  return <Diario key={sessao.user.id} userId={sessao.user.id} />
+  return <Diario key={sessao.user.id} user={sessao.user} />
 }
 
 function ErroConfig() {
@@ -89,8 +93,8 @@ function ErroConfig() {
 
 // A casca é a mesma nos dois tamanhos: aurora, banner de erro e os hooks de dados.
 // Só a composição interna troca — telefone empilha em abas, desktop abre o dashboard.
-function Diario({ userId }: { userId: string }) {
-  const pac = usePacientes(userId)
+function Diario({ user }: { user: User }) {
+  const pac = usePacientes(user.id)
   const dados = useCrises(pac.selecionado?.id ?? null)
   const desktop = useDesktop()
   const erro = dados.erro ?? pac.erro
@@ -104,13 +108,13 @@ function Diario({ userId }: { userId: string }) {
       backgroundColor: '#0a0a13', backgroundAttachment: 'fixed',
     }}>
       {desktop
-        ? <Painel pac={pac} dados={dados} erro={erro} dispensar={dispensar} />
-        : <Telefone pac={pac} dados={dados} erro={erro} dispensar={dispensar} />}
+        ? <Painel user={user} pac={pac} dados={dados} erro={erro} dispensar={dispensar} />
+        : <Telefone user={user} pac={pac} dados={dados} erro={erro} dispensar={dispensar} />}
     </div>
   )
 }
 
-function Telefone({ pac, dados, erro, dispensar }: Casca) {
+function Telefone({ user, pac, dados, erro, dispensar }: Casca) {
   const [tela, setTela] = useState<Tela>('nova')
   const [editando, setEditando] = useState<'novo' | Paciente | null>(null)
   const paciente = pac.selecionado
@@ -139,14 +143,19 @@ function Telefone({ pac, dados, erro, dispensar }: Casca) {
 
         {!form && paciente && (
           <>
-            <BarraPaciente
-              pacientes={pac.pacientes} selecionado={paciente} escolher={pac.escolher}
-              onNovo={() => setEditando('novo')} onEditar={() => setEditando(paciente)}
-            />
+            {/* A troca de paciente não tem o que fazer nos Ajustes: lá a conversa é sobre a
+                conta, e a barra dizendo "Manu" ao lado de "sou César" só confunde. */}
+            {tela !== 'ajustes' && (
+              <BarraPaciente
+                pacientes={pac.pacientes} selecionado={paciente} escolher={pac.escolher}
+                onNovo={() => setEditando('novo')} onEditar={() => setEditando(paciente)}
+              />
+            )}
             {tela === 'nova' && !ativa && <NovaCrise {...dados} />}
             {tela === 'nova' && ativa && <CriseAndamento key={ativa.id} {...dados} ativa={ativa} irPara={setTela} />}
             {tela === 'historico' && <Historico {...dados} />}
             {tela === 'relatorio' && <Relatorio {...dados} paciente={paciente} />}
+            {tela === 'ajustes' && <Ajustes user={user} pac={pac} />}
           </>
         )}
       </div>

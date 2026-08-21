@@ -2,7 +2,6 @@
 // Nenhuma tela foi reescrita — NovaCrise, CriseAndamento, Historico, FormPaciente e os
 // painéis do Relatório são os mesmos componentes, só compostos em grid.
 import { useEffect, useRef, useState } from 'react'
-import { supabase } from './lib/supabase.ts'
 import { fmtDecorrido, idade } from './format.ts'
 import { card, campo, titulo, eyebrow, BotaoPrimario, BannerErro } from './ui.tsx'
 import { analisar } from './report.ts'
@@ -10,6 +9,7 @@ import { FormPaciente } from './Pacientes.tsx'
 import NovaCrise from './screens/NovaCrise.tsx'
 import CriseAndamento from './screens/CriseAndamento.tsx'
 import Historico from './screens/Historico.tsx'
+import Ajustes from './screens/Ajustes.tsx'
 import {
   MIN_CRISES, CabecalhoRelatorio, SemDados, Insight, Gatilhos, Estatisticas, CrisesPorDia,
   Compartilhar,
@@ -76,7 +76,7 @@ function ItemPaciente({ p, sel, onClick }: { p: Paciente; sel: boolean; onClick:
         boxShadow: sel ? '0 0 8px rgba(139,124,252,.8)' : 'none',
       }} />
       <span style={{ fontSize: 14.5, fontWeight: sel ? 700 : 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-        {p.nome}
+        {p.nome}{p.sou_eu && <span style={{ fontWeight: 500, color: 'rgba(235,235,245,.4)' }}> · você</span>}
       </span>
       {anos !== null && (
         <span style={{ marginLeft: 'auto', fontSize: 12, color: 'rgba(235,235,245,.4)' }}>{anos}a</span>
@@ -111,9 +111,9 @@ function EmCurso({ ativa, abrir }: { ativa: Crise; abrir: () => void }) {
   )
 }
 
-export default function Painel({ pac, dados, erro, dispensar }: Casca) {
+export default function Painel({ user, pac, dados, erro, dispensar }: Casca) {
   // null = dashboard limpo; string = uma folha; um paciente = editando esse paciente.
-  const [painel, setPainel] = useState<'nova' | 'andamento' | 'novo-paciente' | Paciente | null>(null)
+  const [painel, setPainel] = useState<'nova' | 'andamento' | 'novo-paciente' | 'ajustes' | Paciente | null>(null)
   const { ativa, encerradas, crises, carregando } = dados
   const paciente = pac.selecionado
   const fechar = () => setPainel(null)
@@ -162,10 +162,10 @@ export default function Painel({ pac, dados, erro, dispensar }: Casca) {
           ? <EmCurso ativa={ativa} abrir={() => setPainel('andamento')} />
           : <BotaoPrimario onClick={() => setPainel('nova')}>+ Nova crise</BotaoPrimario>}
 
-        <button type="button" onClick={() => supabase.auth.signOut()} style={{
+        <button type="button" onClick={() => setPainel('ajustes')} style={{
           background: 'none', border: 'none', fontFamily: 'inherit', padding: 8, textAlign: 'left',
           fontSize: 13, color: 'rgba(235,235,245,.45)', cursor: 'pointer',
-        }}>Sair da conta</button>
+        }}>Ajustes da conta</button>
       </aside>
 
       <main style={{ ...COLUNA_ROLA, display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -200,6 +200,11 @@ export default function Painel({ pac, dados, erro, dispensar }: Casca) {
       {painel === 'andamento' && ativa && (
         <Sobreposto fechar={fechar}>
           <CriseAndamento key={ativa.id} {...dados} ativa={ativa} irPara={fechar} />
+        </Sobreposto>
+      )}
+      {painel === 'ajustes' && (
+        <Sobreposto fechar={fechar}>
+          <Ajustes user={user} pac={pac} />
         </Sobreposto>
       )}
       {painel === 'novo-paciente' && (

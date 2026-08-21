@@ -4,11 +4,11 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase.ts'
 import { analisar, textoRelatorio, porDia, snapshotRelatorio } from '../report.ts'
 import { fmtDuracao, fmtDataHist, fmtDiaEixo } from '../format.ts'
-import { card, campo, titulo, eyebrow, CardVazio } from '../ui.tsx'
+import { card, campo, titulo, eyebrow, CardVazio, Secundaria } from '../ui.tsx'
 import type { Analise } from '../report.ts'
 import type { DadosCrises } from '../useCrises.ts'
 import type { Crise, CriseSnapshot, LinkRelatorio, Paciente } from '../lib/tipos.ts'
-import type { CSSProperties, ReactNode } from 'react'
+import type { CSSProperties } from 'react'
 
 /** Crises encerradas necessárias para o relatório dizer algo — regra única, usada nos dois layouts. */
 export const MIN_CRISES = 2
@@ -301,20 +301,6 @@ const campoLink: CSSProperties = {
   color: 'rgba(235,235,245,.85)', display: 'flex', alignItems: 'center',
 }
 
-/** Ação secundária: texto, não botão — é o que a mantém abaixo do botão principal. */
-function Secundaria({ children, onClick, disabled, perigo }: {
-  children: ReactNode; onClick: () => void; disabled?: boolean; perigo?: boolean
-}) {
-  return (
-    <button type="button" onClick={onClick} disabled={disabled} style={{
-      background: 'none', border: 'none', fontFamily: 'inherit', padding: '6px 8px',
-      fontSize: 13, cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.5 : 1,
-      color: perigo ? 'rgba(255,159,154,.85)' : 'rgba(235,235,245,.55)',
-      textDecoration: 'underline', textUnderlineOffset: 3,
-    }}>{children}</button>
-  )
-}
-
 export function CabecalhoRelatorio({ n, carregando }: { n: number; carregando: boolean }) {
   return (
     <div style={{ padding: '4px 4px 2px' }}>
@@ -352,12 +338,6 @@ export default function Relatorio(
           <Compartilhar encerradas={encerradas} paciente={paciente} />
         </>
       )}
-
-      <button type="button" onClick={() => supabase.auth.signOut()}
-        style={{
-          marginTop: 8, background: 'none', border: 'none', fontFamily: 'inherit',
-          fontSize: 13, color: 'rgba(235,235,245,.45)', cursor: 'pointer', padding: 8,
-        }}>Sair da conta</button>
     </div>
   )
 }

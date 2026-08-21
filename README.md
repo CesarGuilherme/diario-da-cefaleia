@@ -9,8 +9,9 @@ o browser fala direto com o Supabase e a **RLS** é a fronteira de confiança.
 **1. Projeto no Supabase** → SQL Editor → colar `supabase/schema.sql` e rodar.
 Bancos que já existiam rodam, em vez do schema, as migrações na ordem:
 `migracao-paciente.sql` (cria `pacientes` e move as crises existentes pra um "Paciente 1"),
-`migracao-rls-paciente.sql` (fecha as policies — ver **Segurança**) e
-`migracao-relatorio-publico.sql` (a tabela `relatorios` e a função do link do médico).
+`migracao-rls-paciente.sql` (fecha as policies — ver **Segurança**),
+`migracao-relatorio-publico.sql` (a tabela `relatorios` e a função do link do médico) e
+`migracao-sou-eu.sql` (a marca de qual paciente é o dono da conta).
 
 **2. Providers** (Authentication → Providers): e-mail+senha, Google, Apple.
 Em Authentication → URL Configuration, as Redirect URLs devem ter a URL de produção
@@ -46,7 +47,9 @@ seria reescrever a UI em CSS.
 | `src/screens/` | as 4 telas do telefone |
 | `src/Painel.jsx` | o dashboard de desktop (≥1024px), com as mesmas telas em coluna |
 | `src/useDesktop.js` | o breakpoint, via `matchMedia` |
-| `src/ui.jsx` | card de vidro, segmented, chip, botão, campo |
+| `src/screens/Ajustes.tsx` | a conta: nome, quem é você, senha, sair e excluir |
+| `src/conta.ts` | o que dá para saber do usuário sem perguntar ao servidor |
+| `src/ui.jsx` | card de vidro, segmented, chip, botão, campo, ação secundária |
 
 Estilos são inline, copiados do protótipo `design_handoff_diario_cefaleia/`. Não
 "aproximar" sombras e gradientes daqui — é o que mantém a paridade com o iOS.
@@ -55,6 +58,12 @@ Estilos são inline, copiados do protótipo `design_handoff_diario_cefaleia/`. N
 
 Duas tabelas: um responsável tem N `pacientes` (os filhos), e toda linha de `crises`
 pertence a um paciente. O paciente selecionado é o filtro de tudo que o app mostra.
+
+O responsável também pode ser um deles: `pacientes.sou_eu` marca qual dos N é o dono da
+conta (um por conta, por índice único parcial). É o que permite o adulto que registra as
+próprias crises usar o mesmo app sem ser tratado como cuidador de si mesmo. Trocar a marca
+de um paciente para outro passa por `definir_sou_eu()`, e não por dois PATCHes: entre um e
+outro a conta ficaria com dois donos, e o índice não é adiável.
 
 **A crise em andamento é simplesmente a linha com `fim IS NULL`** — não existe um segundo
 conceito de "ativa" para divergir do histórico. Um índice único parcial garante uma crise
@@ -123,5 +132,34 @@ máquina e falharia na do médico.
 A rota vem de um `rewrite` no `vercel.json`, junto com um `X-Robots-Tag: noindex` — o link não
 pede senha, então pelo menos não cai em buscador.
 
+## Conta
+
+`src/screens/Ajustes.tsx` é a 4ª aba, e o único lugar que fala da conta: nome do usuário
+(no `user_metadata`, sem tabela para uma linha de texto), qual paciente é você, senha,
+sair e excluir a conta.
+
+Trocar a senha **confere a senha atual** antes (`signInWithPassword` e depois
+`updateUser`). O Supabase não exige a antiga, e a sessão dura semanas — sem isso, um
+celular destravado troca a senha do dono. Conta que entrou só pelo Google não tem senha:
+a seção some, em vez de mostrar um formulário que nunca funcionaria.
+
+**Excluir a conta** passa por três portões, porque não tem volta: o botão vermelho revela
+um card, o card escreve o que some (conta, pacientes, crises, links do médico), e o alerta
+nativo — o mesmo de apagar uma crise — pergunta uma última vez. O card não substitui o
+alerta: ele explica, e o alerta é o que tira o dedo de cima do botão errado.
+
+É a guideline 5.1.1(v) do App Review, e é a única coisa aqui que não
+dá para fazer com a anon key: apagar `auth.users` é admin-only. Quem apaga é a edge
+function `supabase/functions/excluir-conta`, com a service role, atrás do Bearer do
+chamador — o cascade das três tabelas limpa o resto.
+
+```bash
+supabase functions deploy excluir-conta --no-verify-jwt
+```
+
+O `--no-verify-jwt` não abre a porta: o Bearer é conferido dentro da função, no
+`getUser()`. É o gateway que precisa sair da frente, senão ele responde 401 ao preflight
+`OPTIONS` (que não leva Authorization nenhum) e o browser nem chega a mandar o POST.
+
 **Não tem** (fora de escopo por decisão): export PDF, notificações, filtro de período,
-calendário, gráfico sono×crises.
+calendário, gráfico sono×crises, trocar de e-mail e definir senha em conta social.
