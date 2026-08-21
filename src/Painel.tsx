@@ -141,7 +141,7 @@ export default function Painel({ pac, dados, erro, dispensar }: Casca) {
 
       <aside style={{ position: 'sticky', top: 28, display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div style={{ padding: '0 4px' }}>
-          <div style={eyebrow}>diário da</div>
+          <div style={eyebrow}>Diário da</div>
           <div style={{ ...titulo, fontSize: 24 }}>Cefaléia</div>
         </div>
 
