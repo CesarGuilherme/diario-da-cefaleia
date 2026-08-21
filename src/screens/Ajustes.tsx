@@ -9,7 +9,7 @@ import { useState } from 'react'
 import { supabase } from '../lib/supabase.ts'
 import { card, campo, titulo, eyebrow, sectionLabel, BotaoPrimario, Secundaria } from '../ui.tsx'
 import { falhasSenha, senhaValida } from '../senha.ts'
-import { temSenha, nomeDoUsuario } from '../conta.ts'
+import { temSenha, nomeDoUsuario, pacienteQueSouEu, listar } from '../conta.ts'
 import { ValidadorSenha } from '../Login.tsx'
 import { chaveLocal } from '../Pacientes.tsx'
 import type { DadosPacientes } from '../Pacientes.tsx'
@@ -95,37 +95,51 @@ function Perfil({ user, pac }: { user: User; pac: DadosPacientes }) {
   )
 }
 
-/** "Eu sou o paciente". Um `<select>` e não um liga/desliga: quem já se cadastrou como
- *  paciente ganharia um duplicado ao ligar o interruptor. Aqui os três casos (marcar quem
- *  já existe, criar, desmarcar) cabem em um controle nativo só. */
+/** O papel do dono da conta: só acompanha, ou é paciente também. Duas opções escritas por
+ *  extenso, com os nomes de quem você acompanha — "Ninguém" obrigava a traduzir de cabeça
+ *  o que aquilo queria dizer. Qual linha de `pacientes` é você, o app resolve sozinho. */
 function QuemSouEu({ user, pac }: { user: User; pac: DadosPacientes }) {
   const [ocupado, setOcupado] = useState(false)
   const nome = nomeDoUsuario(user)
   const eu = pac.pacientes.find((p) => p.sou_eu)
 
+  const quem = nome || eu?.nome || 'Você'
+  const acompanhados = pac.pacientes.filter((p) => !p.sou_eu).map((p) => p.nome)
+
   const escolher = async (v: string) => {
     setOcupado(true)
-    if (v === 'novo') await pac.criar({ nome, data_nascimento: null, sou_eu: true })
-    else await pac.definirSouEu(v || null)
+    if (v !== 'eu') await pac.definirSouEu(null)
+    else {
+      // Marcar um homônimo em vez de criar outro: quem começou sozinho já se cadastrou
+      // como paciente, e um segundo "César" partiria o histórico em dois.
+      const meu = pacienteQueSouEu(pac.pacientes, nome)
+      if (meu) await pac.definirSouEu(meu.id)
+      else await pac.criar({ nome, data_nascimento: null, sou_eu: true })
+    }
     setOcupado(false)
   }
 
   return (
     <Secao nome="Quem é você nesta conta">
-      <select value={eu?.id ?? ''} disabled={ocupado} aria-label="Quem é você nesta conta"
+      <select value={eu ? 'eu' : ''} disabled={ocupado} aria-label="Quem é você nesta conta"
         onChange={(e) => escolher(e.target.value)}
         style={{ ...campo, fontWeight: 600, appearance: 'none', cursor: ocupado ? 'default' : 'pointer' }}>
-        <option value="" style={{ color: '#000' }}>Ninguém — acompanho outra pessoa</option>
-        {pac.pacientes.map((p) => (
-          <option key={p.id} value={p.id} style={{ color: '#000' }}>Sou {p.nome}</option>
-        ))}
-        {nome && !eu && <option value="novo" style={{ color: '#000' }}>Sou eu — criar paciente “{nome}”</option>}
+        <option value="" style={{ color: '#000' }}>
+          {acompanhados.length
+            ? `${quem} — acompanhando ${listar(acompanhados)}`
+            : `${quem} — acompanhando outra pessoa`}
+        </option>
+        {/* Sem nome não dá para criar o paciente (o banco exige um), mas quem já está
+            marcado continua podendo se ver marcado. */}
+        {(nome || eu) && (
+          <option value="eu" style={{ color: '#000' }}>{quem} — usuário e paciente</option>
+        )}
       </select>
       <div style={aviso}>
         {eu
-          ? 'Suas crises entram nesse paciente, junto com as de quem mais você acompanhar.'
+          ? `Suas crises entram em ${eu.nome}, junto com as de quem mais você acompanhar.`
           : nome
-            ? 'Marque se as crises registradas também são suas — o app deixa de falar como se todo paciente fosse outra pessoa.'
+            ? 'A segunda opção é para quando as crises registradas também são suas.'
             : 'Preencha seu nome acima para poder se cadastrar como paciente.'}
       </div>
     </Secao>

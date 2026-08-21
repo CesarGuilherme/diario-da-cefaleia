@@ -65,6 +65,12 @@ próprias crises usar o mesmo app sem ser tratado como cuidador de si mesmo. Tro
 de um paciente para outro passa por `definir_sou_eu()`, e não por dois PATCHes: entre um e
 outro a conta ficaria com dois donos, e o índice não é adiável.
 
+Nos Ajustes isso é uma pergunta de duas respostas — "César — acompanhando Manu" ou "César
+— usuário e paciente" — e qual linha é você o app resolve sozinho (`pacienteQueSouEu`): a
+marca vale mais que o nome, e sem marca um homônimo do nome da conta é você. Sem essa
+segunda regra, quem começou sozinho (o app exige um paciente antes da primeira crise) ao
+se marcar ganharia um segundo "César", com o histórico partido entre os dois.
+
 **A crise em andamento é simplesmente a linha com `fim IS NULL`** — não existe um segundo
 conceito de "ativa" para divergir do histórico. Um índice único parcial garante uma crise
 aberta **por paciente**, no banco (dois filhos podem estar em crise ao mesmo tempo).

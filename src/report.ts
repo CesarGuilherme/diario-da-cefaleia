@@ -28,7 +28,8 @@ const presente = (gatilho: Gatilho) =>
     : (c: CriseSnapshot) => c.gatilhos.includes(gatilho)
 
 // Compara ignorando caixa e acento, para "Leite" e "leite" contarem como o mesmo item.
-const chave = (s: string) => s.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+// Exportada porque os Ajustes comparam nome de gente com a mesma r\u00e9gua ("Cesar" = "C\u00e9sar").
+export const chave = (s: string) => s.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 
 /**
  * Itens que se repetem entre as crises de um gatilho — o "leite em 2 de 3".
