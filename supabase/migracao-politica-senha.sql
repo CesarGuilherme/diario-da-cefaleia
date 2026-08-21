@@ -1,0 +1,16 @@
+-- Política de senha do GoTrue: não é SQL, é configuração de projeto — não dá para
+-- aplicar por migration. Fica aqui, no mesmo lugar das outras migrations, para não
+-- se perder.
+--
+-- `senha.ts` (e o Senha.swift do iOS) só mostram o checklist ao vivo — não impedem
+-- um POST /signup direto com "123456". Quem barra de verdade é esta política, do
+-- lado do servidor, e ela vale para web, iOS e qualquer cliente futuro.
+--
+-- Dashboard do projeto vzhp… → Authentication → Policies → Password Requirements:
+--   - Minimum password length: 8
+--   - Password requirements: Lowercase, uppercase, numbers and symbols
+--
+-- Confere se está valendo (deve recusar, HTTP 422 "Password should contain..."):
+--   curl -X POST 'https://vzhpsfbimluydiwmflyc.supabase.co/auth/v1/signup' \
+--     -H "apikey: $SUPABASE_ANON_KEY" -H 'Content-Type: application/json' \
+--     -d '{"email":"teste@exemplo.com","password":"12345678"}'
