@@ -5,22 +5,12 @@ import { useEffect, useState } from 'react'
 import { supabaseAnon, faltaConfig } from './lib/supabase.ts'
 import { analisar } from './report.ts'
 import { fmtDataHist } from './format.ts'
-import { card, titulo, eyebrow, legenda } from './ui.tsx'
+import { card, titulo, eyebrow, legenda, fundoAurora } from './ui.tsx'
 import { CriseCard } from './screens/Historico.tsx'
 import { MIN_CRISES, Insight, Gatilhos, CrisesPorDia, Estatisticas } from './screens/Relatorio.tsx'
 import type { Snapshot } from './lib/tipos.ts'
-import type { CSSProperties } from 'react'
 
-const AURORA = [
-  'radial-gradient(circle at 15% 8%, rgba(124,108,246,.38), transparent 42%)',
-  'radial-gradient(circle at 90% 25%, rgba(56,189,248,.20), transparent 45%)',
-  'radial-gradient(circle at 60% 95%, rgba(124,108,246,.18), transparent 50%)',
-]
-
-const fundo: CSSProperties = {
-  minHeight: '100%', backgroundImage: AURORA.join(','),
-  backgroundColor: '#0a0a13', backgroundAttachment: 'fixed',
-}
+const fundo = fundoAurora()
 
 export default function Publico({ token }: { token: string }) {
   const [estado, setEstado] = useState<'carregando' | 'invalido' | 'dados'>('carregando')

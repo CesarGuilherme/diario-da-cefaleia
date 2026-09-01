@@ -5,15 +5,35 @@ import { titulo, eyebrow, legenda, BotaoPrimario } from '../ui.tsx'
 import CamposCrise from '../CamposCrise.tsx'
 import type { DadosCrises } from '../useCrises.ts'
 
-export default function NovaCrise({ iniciar }: Pick<DadosCrises, 'iniciar'>) {
-  const [form, setForm] = useState(FORM_PADRAO)
+// O relógio do cabeçalho fica isolado: sozinho ele re-renderiza a cada segundo sem
+// arrastar o formulário inteiro (Segmented, Chips, toggles) junto — mesmo padrão do
+// EmCurso no Painel.
+function Cabecalho() {
   const [agora, setAgora] = useState(() => new Date())
-  const [ocupado, setOcupado] = useState(false)
-
   useEffect(() => {
     const t = setInterval(() => setAgora(new Date()), 1000)
     return () => clearInterval(t)
   }, [])
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', padding: '4px 4px 2px', gap: 8 }}>
+      <div>
+        <div style={eyebrow}>{fmtEyebrow(agora)}</div>
+        <h1 style={{ ...titulo, margin: 0 }}>Nova Crise</h1>
+      </div>
+      <div style={{
+        height: 38, padding: '0 16px', borderRadius: 999, display: 'flex', alignItems: 'center',
+        background: 'rgba(120,120,128,.24)', backdropFilter: 'blur(12px) saturate(180%)',
+        border: '.5px solid rgba(255,255,255,.15)', boxShadow: 'inset 1px 1px 1px rgba(255,255,255,.14)',
+        fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap',
+      }}>{fmtHora(agora)} · Agora</div>
+    </div>
+  )
+}
+
+export default function NovaCrise({ iniciar }: Pick<DadosCrises, 'iniciar'>) {
+  const [form, setForm] = useState(FORM_PADRAO)
+  const [ocupado, setOcupado] = useState(false)
 
   const enviar = async () => {
     setOcupado(true)
@@ -24,18 +44,7 @@ export default function NovaCrise({ iniciar }: Pick<DadosCrises, 'iniciar'>) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', padding: '4px 4px 2px', gap: 8 }}>
-        <div>
-          <div style={eyebrow}>{fmtEyebrow(agora)}</div>
-          <h1 style={{ ...titulo, margin: 0 }}>Nova Crise</h1>
-        </div>
-        <div style={{
-          height: 38, padding: '0 16px', borderRadius: 999, display: 'flex', alignItems: 'center',
-          background: 'rgba(120,120,128,.24)', backdropFilter: 'blur(12px) saturate(180%)',
-          border: '.5px solid rgba(255,255,255,.15)', boxShadow: 'inset 1px 1px 1px rgba(255,255,255,.14)',
-          fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap',
-        }}>{fmtHora(agora)} · Agora</div>
-      </div>
+      <Cabecalho />
 
       <CamposCrise form={form} setForm={setForm} />
 

@@ -3,6 +3,23 @@ import type { CSSProperties, ReactNode } from 'react'
 // Estilos e componentes compartilhados. Valores copiados verbatim do protótipo do handoff —
 // não "aproximar" nenhuma sombra ou gradiente daqui, é o que garante paridade com o iOS.
 
+// Fundo escuro com aurora — o mesmo nas duas cascas (App) e na página pública (Publico).
+// backgroundImage/Color separados do shorthand: misturar `background` com
+// `backgroundAttachment` faz o React avisar de conflito no rerender.
+export const AURORA = [
+  'radial-gradient(circle at 15% 8%, rgba(124,108,246,.38), transparent 42%)',
+  'radial-gradient(circle at 90% 25%, rgba(56,189,248,.20), transparent 45%)',
+  'radial-gradient(circle at 60% 95%, rgba(124,108,246,.18), transparent 50%)',
+]
+
+/** `frente` entra na frente dos gradientes base — é a aurora vermelha da crise aberta. */
+export const fundoAurora = (...frente: string[]): CSSProperties => ({
+  minHeight: '100%',
+  backgroundImage: [...frente, ...AURORA].join(','),
+  backgroundColor: '#0a0a13',
+  backgroundAttachment: 'fixed',
+})
+
 export const card: CSSProperties = {
   position: 'relative', borderRadius: 26, background: 'rgba(255,255,255,.07)',
   border: '.5px solid rgba(255,255,255,.14)',

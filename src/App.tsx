@@ -5,7 +5,7 @@ import type { DadosCrises } from './useCrises.ts'
 import { usePacientes, FormPaciente, BarraPaciente } from './Pacientes.tsx'
 import type { DadosPacientes } from './Pacientes.tsx'
 import { useDesktop } from './useDesktop.ts'
-import { BannerErro } from './ui.tsx'
+import { BannerErro, fundoAurora } from './ui.tsx'
 import Painel from './Painel.tsx'
 import Login, { RedefinirSenha } from './Login.tsx'
 import NovaCrise from './screens/NovaCrise.tsx'
@@ -14,14 +14,8 @@ import Historico from './screens/Historico.tsx'
 import Relatorio from './screens/Relatorio.tsx'
 import Ajustes from './screens/Ajustes.tsx'
 import type { Paciente } from './lib/tipos.ts'
-import type { CSSProperties } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 
-const AURORA = [
-  'radial-gradient(circle at 15% 8%, rgba(124,108,246,.38), transparent 42%)',
-  'radial-gradient(circle at 90% 25%, rgba(56,189,248,.20), transparent 45%)',
-  'radial-gradient(circle at 60% 95%, rgba(124,108,246,.18), transparent 50%)',
-]
 // O 4º gradiente só aparece com crise aberta — junto com a aba vermelha, é o aviso do app.
 const AURORA_ATIVA = 'radial-gradient(circle at 50% 0%, rgba(255,69,58,.30), transparent 45%)'
 
@@ -55,14 +49,7 @@ export default function App() {
     return () => sub.subscription.unsubscribe()
   }, [])
 
-  // backgroundImage/Color separados do shorthand: misturar `background` com
-  // `backgroundAttachment` faz o React avisar de conflito no rerender.
-  const fundo: CSSProperties = {
-    minHeight: '100%',
-    backgroundImage: AURORA.join(','),
-    backgroundColor: '#0a0a13',
-    backgroundAttachment: 'fixed',
-  }
+  const fundo = fundoAurora()
 
   if (faltaConfig) return <div style={fundo}><ErroConfig /></div>
   if (sessao === undefined) return <div style={fundo} />
@@ -100,13 +87,8 @@ function Diario({ user }: { user: User }) {
   const erro = dados.erro ?? pac.erro
   const dispensar = () => { dados.setErro(null); pac.setErro(null) }
 
-  const camadas = dados.ativa ? [AURORA_ATIVA, ...AURORA] : AURORA
-
   return (
-    <div style={{
-      minHeight: '100%', backgroundImage: camadas.join(','),
-      backgroundColor: '#0a0a13', backgroundAttachment: 'fixed',
-    }}>
+    <div style={dados.ativa ? fundoAurora(AURORA_ATIVA) : fundoAurora()}>
       {desktop
         ? <Painel user={user} pac={pac} dados={dados} erro={erro} dispensar={dispensar} />
         : <Telefone user={user} pac={pac} dados={dados} erro={erro} dispensar={dispensar} />}

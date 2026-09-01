@@ -113,5 +113,5 @@ $$;
 revoke all on function public.relatorio_publico(uuid) from public;
 grant execute on function public.relatorio_publico(uuid) to anon, authenticated;
 
--- ponytail: linha expirada fica no banco sem servir para nada; varrer com pg_cron só se virar
--- volume — hoje são unidades de linha por conta.
+-- Linha expirada guarda PHI sem servir para nada — a varredura diária que a apaga está em
+-- supabase/migracao-purga-relatorios.sql (pg_cron).
