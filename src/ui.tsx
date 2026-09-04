@@ -20,25 +20,13 @@ export const fundoAurora = (...frente: string[]): CSSProperties => ({
   backgroundAttachment: 'fixed',
 })
 
-/** Espera de sessão / dados — centrado na aurora. Sem animação (respeita reduced-motion). */
-export function Carregando({ texto = 'Carregando…' }: { texto?: string } = {}) {
+/** Espera de sessão / dados. Marcação e estilos iguais aos do index.html — a casca
+ * pré-React já desenha este mesmo pulso, então montar o React não pisca. */
+export function Carregando({ texto = 'Carregando…', emLinha = false }: { texto?: string; emLinha?: boolean } = {}) {
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      style={{
-        minHeight: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 32,
-        boxSizing: 'border-box',
-        fontSize: 15,
-        fontWeight: 600,
-        color: 'rgba(235,235,245,.55)',
-      }}
-    >
-      {texto}
+    <div className={emLinha ? 'carregando em-linha' : 'carregando'} role="status" aria-live="polite">
+      <div className="pulso"><i /><i /><b /></div>
+      <p>{texto}</p>
     </div>
   )
 }

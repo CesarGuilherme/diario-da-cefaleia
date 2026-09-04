@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import { supabaseAnon, faltaConfig } from './lib/supabase.ts'
 import { analisar } from './report.ts'
 import { fmtDataHist } from './format.ts'
-import { card, titulo, eyebrow, legenda, fundoAurora } from './ui.tsx'
+import { card, titulo, eyebrow, legenda, fundoAurora, Carregando } from './ui.tsx'
 import { CriseCard } from './screens/Historico.tsx'
 import { MIN_CRISES, Insight, Gatilhos, CrisesPorDia, Estatisticas } from './screens/Relatorio.tsx'
 import type { Snapshot } from './lib/tipos.ts'
@@ -32,7 +32,7 @@ export default function Publico({ token }: { token: string }) {
   return (
     <div style={fundo}>
       <div style={{ maxWidth: 760, margin: '0 auto', boxSizing: 'border-box', padding: '48px 16px 64px' }}>
-        {estado === 'carregando' && <div style={legenda}>Carregando relatório…</div>}
+        {estado === 'carregando' && <Carregando emLinha texto="Carregando relatório…" />}
         {estado === 'invalido' && <LinkInvalido />}
         {estado === 'dados' && dados && <Conteudo dados={dados} />}
       </div>
