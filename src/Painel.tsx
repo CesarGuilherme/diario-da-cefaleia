@@ -123,7 +123,9 @@ export default function Painel({ user, pac, dados, erro, dispensar }: Casca) {
     return (
       <div style={{ maxWidth: 520, margin: '0 auto', padding: '60px 20px' }}>
         <BannerErro erro={erro} dispensar={dispensar} />
-        {!pac.carregando && <FormPaciente primeiro onSalvar={pac.criar} />}
+        {pac.carregando
+          ? <div style={{ padding: '48px 16px', textAlign: 'center', fontSize: 15, fontWeight: 600, color: 'rgba(235,235,245,.55)' }}>Carregando…</div>
+          : <FormPaciente primeiro onSalvar={pac.criar} />}
       </div>
     )
   }

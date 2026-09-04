@@ -5,7 +5,7 @@ import type { DadosCrises } from './useCrises.ts'
 import { usePacientes, FormPaciente, BarraPaciente } from './Pacientes.tsx'
 import type { DadosPacientes } from './Pacientes.tsx'
 import { useDesktop } from './useDesktop.ts'
-import { BannerErro, fundoAurora } from './ui.tsx'
+import { BannerErro, Carregando, fundoAurora } from './ui.tsx'
 import Painel from './Painel.tsx'
 import Login, { RedefinirSenha } from './Login.tsx'
 import NovaCrise from './screens/NovaCrise.tsx'
@@ -52,7 +52,7 @@ export default function App() {
   const fundo = fundoAurora()
 
   if (faltaConfig) return <div style={fundo}><ErroConfig /></div>
-  if (sessao === undefined) return <div style={fundo} />
+  if (sessao === undefined) return <div style={fundo}><Carregando /></div>
   if (!sessao) return <div style={fundo}><Login /></div>
   if (recuperando) return <div style={fundo}><RedefinirSenha onOk={() => setRecuperando(false)} /></div>
   // key no uid: trocar de conta sem passar por deslogado reaproveitaria os hooks e
@@ -112,6 +112,15 @@ function Telefone({ user, pac, dados, erro, dispensar }: Casca) {
         padding: '60px 16px calc(150px + env(safe-area-inset-bottom))',
       }}>
         <BannerErro erro={erro} dispensar={dispensar} />
+
+        {!form && !paciente && pac.carregando && (
+          <div style={{
+            padding: '48px 16px', textAlign: 'center',
+            fontSize: 15, fontWeight: 600, color: 'rgba(235,235,245,.55)',
+          }}>
+            Carregando…
+          </div>
+        )}
 
         {form && (
           <FormPaciente
