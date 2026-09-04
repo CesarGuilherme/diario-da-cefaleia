@@ -20,6 +20,29 @@ export const fundoAurora = (...frente: string[]): CSSProperties => ({
   backgroundAttachment: 'fixed',
 })
 
+/** Espera de sessão / dados — centrado na aurora. Sem animação (respeita reduced-motion). */
+export function Carregando({ texto = 'Carregando…' }: { texto?: string } = {}) {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      style={{
+        minHeight: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 32,
+        boxSizing: 'border-box',
+        fontSize: 15,
+        fontWeight: 600,
+        color: 'rgba(235,235,245,.55)',
+      }}
+    >
+      {texto}
+    </div>
+  )
+}
+
 export const card: CSSProperties = {
   position: 'relative', borderRadius: 26, background: 'rgba(255,255,255,.07)',
   border: '.5px solid rgba(255,255,255,.14)',
