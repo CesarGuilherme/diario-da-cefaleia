@@ -113,14 +113,7 @@ function Telefone({ user, pac, dados, erro, dispensar }: Casca) {
       }}>
         <BannerErro erro={erro} dispensar={dispensar} />
 
-        {!form && !paciente && pac.carregando && (
-          <div style={{
-            padding: '48px 16px', textAlign: 'center',
-            fontSize: 15, fontWeight: 600, color: 'rgba(235,235,245,.55)',
-          }}>
-            Carregando…
-          </div>
-        )}
+        {!form && !paciente && pac.carregando && <Carregando emLinha />}
 
         {form && (
           <FormPaciente

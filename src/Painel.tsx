@@ -3,7 +3,7 @@
 // painéis do Relatório são os mesmos componentes, só compostos em grid.
 import { useEffect, useRef, useState } from 'react'
 import { fmtDecorrido, idade } from './format.ts'
-import { card, campo, titulo, eyebrow, BotaoPrimario, BannerErro } from './ui.tsx'
+import { card, campo, titulo, eyebrow, BotaoPrimario, BannerErro, Carregando } from './ui.tsx'
 import { analisar } from './report.ts'
 import { FormPaciente } from './Pacientes.tsx'
 import NovaCrise from './screens/NovaCrise.tsx'
@@ -124,7 +124,7 @@ export default function Painel({ user, pac, dados, erro, dispensar }: Casca) {
       <div style={{ maxWidth: 520, margin: '0 auto', padding: '60px 20px' }}>
         <BannerErro erro={erro} dispensar={dispensar} />
         {pac.carregando
-          ? <div style={{ padding: '48px 16px', textAlign: 'center', fontSize: 15, fontWeight: 600, color: 'rgba(235,235,245,.55)' }}>Carregando…</div>
+          ? <Carregando emLinha />
           : <FormPaciente primeiro onSalvar={pac.criar} />}
       </div>
     )
