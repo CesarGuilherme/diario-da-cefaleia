@@ -29,10 +29,11 @@ export default function Publico({ token }: { token: string }) {
     return () => { vivo = false }
   }, [token])
 
+  if (estado === 'carregando') return <div style={fundo}><Carregando texto="Carregando relatório…" /></div>
+
   return (
     <div style={fundo}>
       <div style={{ maxWidth: 760, margin: '0 auto', boxSizing: 'border-box', padding: '48px 16px 64px' }}>
-        {estado === 'carregando' && <Carregando emLinha texto="Carregando relatório…" />}
         {estado === 'invalido' && <LinkInvalido />}
         {estado === 'dados' && dados && <Conteudo dados={dados} />}
       </div>

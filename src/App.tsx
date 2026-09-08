@@ -105,6 +105,8 @@ function Telefone({ user, pac, dados, erro, dispensar }: Casca) {
   // Paciente é obrigatório: sem nenhum cadastrado, o app é só o formulário.
   const form = editando ?? (!pac.carregando && !paciente ? 'novo' : null)
 
+  if (!form && !paciente && pac.carregando) return <Carregando />
+
   return (
     <>
       <div style={{
@@ -112,8 +114,6 @@ function Telefone({ user, pac, dados, erro, dispensar }: Casca) {
         padding: '60px 16px calc(150px + env(safe-area-inset-bottom))',
       }}>
         <BannerErro erro={erro} dispensar={dispensar} />
-
-        {!form && !paciente && pac.carregando && <Carregando emLinha />}
 
         {form && (
           <FormPaciente

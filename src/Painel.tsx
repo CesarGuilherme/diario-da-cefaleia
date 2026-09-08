@@ -120,12 +120,11 @@ export default function Painel({ user, pac, dados, erro, dispensar }: Casca) {
 
   // Paciente é obrigatório: sem nenhum, o dashboard não existe ainda.
   if (!paciente) {
+    if (pac.carregando) return <Carregando />
     return (
       <div style={{ maxWidth: 520, margin: '0 auto', padding: '60px 20px' }}>
         <BannerErro erro={erro} dispensar={dispensar} />
-        {pac.carregando
-          ? <Carregando emLinha />
-          : <FormPaciente primeiro onSalvar={pac.criar} />}
+        <FormPaciente primeiro onSalvar={pac.criar} />
       </div>
     )
   }
