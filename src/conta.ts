@@ -9,6 +9,19 @@ import type { User } from '@supabase/supabase-js'
  * uma identidade por provedor, e a senha pertence à identidade `email`. Sem isso os
  * Ajustes mostrariam um formulário de "senha atual" que nunca poderia dar certo.
  */
+/** Confirmação local antes de chamar a exclusão. A senha em si o GoTrue confere. */
+export function confirmaExclusao(opts: {
+  temSenha: boolean
+  email: string
+  senha: string
+  emailConfirma: string
+}): string | null {
+  if (opts.temSenha) return opts.senha ? null : 'Informe a senha atual.'
+  return chave(opts.emailConfirma) === chave(opts.email) && opts.email.trim()
+    ? null
+    : 'Digite o e-mail da conta para confirmar.'
+}
+
 export function temSenha(user: User): boolean {
   // `identities` é a fonte boa, mas some em sessão restaurada de versão antiga do SDK —
   // aí o `providers` do app_metadata (que o próprio GoTrue põe no JWT) responde igual.

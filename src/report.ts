@@ -116,11 +116,19 @@ export function porDia(crises: CriseSnapshot[], hoje = new Date()) {
   return dias
 }
 
-/** O que o relatório desenha — gatilhos ordenados, insight e as duas estatísticas. */
-export type Analise = ReturnType<typeof analisar>
+/** Média de dias com crise por mês, do primeiro registro até `hoje`. Zero se não há crises. */
+export function frequenciaMes(crises: CriseSnapshot[], hoje = new Date()): number {
+  const meses = porMes(crises, hoje)
+  if (!meses.length) return 0
+  const dias = meses.reduce((s, m) => s + m.com, 0)
+  return Math.round(dias / meses.length)
+}
 
-export function analisar(crises: CriseSnapshot[]) {
+export function analisar(crises: CriseSnapshot[], hoje = new Date()) {
   const n = crises.length
+  if (!n) {
+    return { gatilhos: [], insight: 'Ainda sem um gatilho dominante — continue registrando.', frequencia: 0, duracaoMedia: null }
+  }
   const gatilhos = DEFS
     .map(([label, gatilho, grad, valColor, sh]) => ({
       label, grad, valColor, sh,
@@ -134,9 +142,7 @@ export function analisar(crises: CriseSnapshot[]) {
     ? `${top.pct}% das crises ocorreram com "${top.label}" presente — o gatilho mais frequente do período.`
     : 'Ainda sem um gatilho dominante — continue registrando.'
 
-  // ponytail: frequência assume janela fixa de ~90 dias, igual ao iOS. Trocar por
-  // bucket real de mês quando existir filtro de período (hoje "período" = tudo).
-  const frequencia = Math.max(1, Math.round(n / 3))
+  const frequencia = frequenciaMes(crises, hoje)
 
   const duracoes = crises.map(duracaoMin).filter((d) => d !== null)
   const duracaoMedia = duracoes.length
@@ -145,6 +151,9 @@ export function analisar(crises: CriseSnapshot[]) {
 
   return { gatilhos, insight, frequencia, duracaoMedia }
 }
+
+/** O que o relatório desenha — gatilhos ordenados, insight e as duas estatísticas. */
+export type Analise = ReturnType<typeof analisar>
 
 // O que vai no link público é uma cópia congelada, não um espelho: o médico vê daqui a
 // 20 dias o mesmo relatório que você mandou, e crise nova não vaza para um link já enviado.

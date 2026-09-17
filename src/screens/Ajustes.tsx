@@ -5,11 +5,11 @@
 // uma tarefa por grupo, e a ação destrutiva sozinha no fim, em vermelho, dizendo o que
 // some antes de perguntar. Desenhada com o design system que já existe — nenhum
 // componente visual novo entra por causa desta tela.
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase.ts'
 import { card, campo, titulo, eyebrow, sectionLabel, BotaoPrimario, Secundaria } from '../ui.tsx'
 import { falhasSenha, senhaValida } from '../senha.ts'
-import { temSenha, nomeDoUsuario, pacienteQueSouEu, listar } from '../conta.ts'
+import { temSenha, nomeDoUsuario, pacienteQueSouEu, listar, confirmaExclusao } from '../conta.ts'
 import { ValidadorSenha } from '../Login.tsx'
 import { chaveLocal } from '../Pacientes.tsx'
 import type { DadosPacientes } from '../Pacientes.tsx'
@@ -222,16 +222,39 @@ function ExcluirConta({ user }: { user: User }) {
   const [confirmando, setConfirmando] = useState(false)
   const [ocupado, setOcupado] = useState(false)
   const [msg, setMsg] = useState<Msg>(null)
+  const [senha, setSenha] = useState('')
+  const [emailConfirma, setEmailConfirma] = useState('')
+  const comSenha = temSenha(user)
+  const campoRef = useRef<HTMLInputElement>(null)
 
-  const excluir = async () => {
+  useEffect(() => {
+    if (confirmando) campoRef.current?.focus()
+  }, [confirmando])
+
+  const excluir = async (e: FormEvent) => {
+    e.preventDefault()
+    const falta = confirmaExclusao({
+      temSenha: comSenha, email: user.email ?? '', senha, emailConfirma,
+    })
+    if (falta) { setMsg({ erro: true, texto: falta }); return }
     // O mesmo alerta nativo que o app já usa para apagar uma crise e revogar um link. Ele
     // sai do desenho da página: não dá para clicar sem ver, nem tocar sem querer.
     if (!confirm('Excluir a conta e apagar todas as crises? Isso não pode ser desfeito.')) return
     setOcupado(true); setMsg(null)
+    if (comSenha) {
+      const { error: erroAuth } = await supabase.auth.signInWithPassword({
+        email: user.email ?? '', password: senha,
+      })
+      if (erroAuth) {
+        setOcupado(false)
+        setMsg({ erro: true, texto: 'Senha atual incorreta.' })
+        return
+      }
+    }
     const { error } = await supabase.functions.invoke('excluir-conta', { method: 'POST' })
     if (error) {
       setOcupado(false)
-      setMsg({ erro: true, texto: `Não foi possível excluir a conta: ${error.message}` })
+      setMsg({ erro: true, texto: 'Não foi possível excluir a conta. Tente de novo.' })
       return
     }
     // O usuário não existe mais: o signOut normal bateria no servidor e voltaria 401,
@@ -249,7 +272,7 @@ function ExcluirConta({ user }: { user: User }) {
   }
 
   return (
-    <section style={{
+    <form onSubmit={excluir} style={{
       ...card, padding: 18, display: 'flex', flexDirection: 'column', gap: 12,
       background: 'rgba(255,69,58,.12)', border: '.5px solid rgba(255,69,58,.3)',
     }}>
@@ -258,7 +281,22 @@ function ExcluirConta({ user }: { user: User }) {
         Some tudo, e não dá para desfazer: a conta, os pacientes, todas as crises
         registradas e os links já enviados ao médico. Não guardamos cópia.
       </div>
-      <button type="button" onClick={excluir} disabled={ocupado} style={{
+      {comSenha ? (
+        <label>
+          <div style={sectionLabel}>Senha atual</div>
+          <input ref={campoRef} type="password" required autoComplete="current-password" style={campo}
+            value={senha} onChange={(e) => setSenha(e.target.value)}
+            aria-invalid={msg?.erro || undefined} />
+        </label>
+      ) : (
+        <label>
+          <div style={sectionLabel}>E-mail da conta</div>
+          <input ref={campoRef} type="email" required autoComplete="off" style={campo}
+            value={emailConfirma} onChange={(e) => setEmailConfirma(e.target.value)}
+            aria-invalid={msg?.erro || undefined} />
+        </label>
+      )}
+      <button type="submit" disabled={ocupado} style={{
         width: '100%', height: 52, borderRadius: 999, border: 'none', fontFamily: 'inherit',
         background: 'linear-gradient(180deg,#ff6b62,#e0332a)',
         boxShadow: '0 8px 24px rgba(255,69,58,.35),inset 1.5px 1.5px 1px rgba(255,255,255,.3)',
@@ -269,6 +307,6 @@ function ExcluirConta({ user }: { user: User }) {
         <Secundaria onClick={() => setConfirmando(false)} disabled={ocupado}>Cancelar</Secundaria>
       </div>
       <Recado msg={msg} />
-    </section>
+    </form>
   )
 }

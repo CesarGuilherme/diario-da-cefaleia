@@ -84,7 +84,7 @@ export function Gatilhos({ gatilhos }: { gatilhos: Analise['gatilhos'] }) {
 export function Estatisticas({ frequencia, duracaoMedia }: Pick<Analise, 'frequencia' | 'duracaoMedia'>) {
   return (
     <div style={{ display: 'flex', gap: 12 }}>
-      <Stat rotulo="Frequência" valor={frequencia} sufixo="/mês" sub="média do período" />
+      <Stat rotulo="Frequência" valor={frequencia} sufixo="/mês" sub="dias com crise no período" />
       <Stat rotulo="Duração média" valor={duracaoMedia === null ? '—' : fmtDuracao(duracaoMedia)} sub="por crise" />
     </div>
   )
@@ -200,13 +200,17 @@ export function Compartilhar({ encerradas, paciente }: { encerradas: Crise[]; pa
 
   const gerar = async () => {
     setOcupado(true); setAviso(null)
-    const { data, error } = await supabase.from('relatorios')
-      .insert({ paciente_id: paciente.id, dados: snapshotRelatorio(encerradas, paciente) })
-      .select().single()
+    const { data: id, error } = await supabase.rpc('publicar_relatorio', {
+      pid: paciente.id, dados: snapshotRelatorio(encerradas, paciente),
+    })
+    if (error || !id) {
+      setOcupado(false)
+      setAviso('Não foi possível gerar o link.')
+      return null
+    }
+    const { data } = await supabase.from('relatorios').select('*').eq('id', id).single()
     setOcupado(false)
-    if (error) { setAviso(error.message); return null }
-    // Insere antes de apagar: se a limpeza falhar sobra um link a mais, nunca nenhum.
-    await supabase.from('relatorios').delete().eq('paciente_id', paciente.id).neq('id', data.id)
+    if (!data) { setAviso('Não foi possível gerar o link.'); return null }
     setLink(data)
     return `${location.origin}/r/${data.id}`
   }

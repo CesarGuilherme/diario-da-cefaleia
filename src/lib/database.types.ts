@@ -138,6 +138,7 @@ export type Database = {
     Views: { [_ in never]: never }
     Functions: {
       definir_sou_eu: { Args: { pid: string }; Returns: undefined }
+      publicar_relatorio: { Args: { pid: string; dados: Json }; Returns: string }
       relatorio_publico: { Args: { token: string }; Returns: Json }
     }
     Enums: { [_ in never]: never }

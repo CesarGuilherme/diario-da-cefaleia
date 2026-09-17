@@ -59,7 +59,7 @@ function Conteudo({ dados }: { dados: Snapshot }) {
   // relógio de quem abre, e os números batem com os da tela de quem compartilhou.
   const gerado = new Date(gerado_em)
   const pronto = crises.length >= MIN_CRISES
-  const a = pronto ? analisar(crises) : null
+  const a = pronto ? analisar(crises, gerado) : null
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>

@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   )
   const { error } = await comPrivilegio.auth.admin.deleteUser(user.id)
-  if (error) return new Response(error.message, { status: 500, headers: CORS })
+  if (error) return new Response('Could not delete account', { status: 500, headers: CORS })
 
   return new Response(null, { status: 204, headers: CORS })
 })

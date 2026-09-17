@@ -10,8 +10,10 @@ o browser fala direto com o Supabase e a **RLS** é a fronteira de confiança.
 Bancos que já existiam rodam, em vez do schema, as migrações na ordem:
 `migracao-paciente.sql` (cria `pacientes` e move as crises existentes pra um "Paciente 1"),
 `migracao-rls-paciente.sql` (fecha as policies — ver **Segurança**),
-`migracao-relatorio-publico.sql` (a tabela `relatorios` e a função do link do médico) e
-`migracao-sou-eu.sql` (a marca de qual paciente é o dono da conta).
+`migracao-relatorio-publico.sql` (a tabela `relatorios` e a função do link do médico),
+`migracao-sou-eu.sql` (a marca de qual paciente é o dono da conta) e
+`migracao-relatorio-lock.sql` (token e prazo forçados no banco, GRANT de anon revogado,
+link atômico, log de abertura).
 
 **2. Providers** (Authentication → Providers): e-mail+senha, Google, Apple.
 Em Authentication → URL Configuration, as Redirect URLs devem ter a URL de produção

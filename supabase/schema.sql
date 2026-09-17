@@ -42,6 +42,9 @@ create unique index crises_uma_ativa on crises (paciente_id) where fim is null;
 alter table pacientes enable row level security;
 alter table crises enable row level security;
 
+revoke all on table public.pacientes, public.crises from anon, public;
+grant select, insert, update, delete on table public.pacientes, public.crises to authenticated;
+
 -- As linhas mais importantes do projeto: sem elas o app vaza dados entre contas.
 -- `to authenticated` mantém o anon fora da avaliação; `(select auth.uid())` faz o
 -- Postgres resolver o uid uma vez por query em vez de uma vez por linha.
@@ -73,7 +76,7 @@ create table relatorios (
   id           uuid primary key default gen_random_uuid(),
   user_id      uuid not null references auth.users(id) on delete cascade default auth.uid(),
   paciente_id  uuid not null references pacientes(id) on delete cascade,
-  dados        jsonb not null,
+  dados        jsonb not null check (octet_length(dados::text) <= 200000),
   criado_em    timestamptz not null default now(),
   expira_em    timestamptz not null default now() + interval '7 days'
 );
@@ -95,19 +98,93 @@ create policy "dono" on relatorios for all
     )
   );
 
+revoke all on table public.relatorios from anon, public, authenticated;
+grant select, delete on table public.relatorios to authenticated;
+grant insert (paciente_id, dados) on table public.relatorios to authenticated;
+
+-- O cliente não escolhe token nem prazo: o trigger apaga o que vier no INSERT.
+create function public.relatorios_forcar_prazo()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if tg_op = 'INSERT' then
+    new.id := gen_random_uuid();
+    new.expira_em := now() + interval '7 days';
+  else
+    new.id := old.id;
+    new.expira_em := old.expira_em;
+    new.user_id := old.user_id;
+  end if;
+  if octet_length(new.dados::text) > 200000 then
+    raise exception 'relatorio grande demais' using errcode = '22023';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger relatorios_forcar_prazo
+  before insert or update on public.relatorios
+  for each row execute function public.relatorios_forcar_prazo();
+
+create function public.publicar_relatorio(pid uuid, dados jsonb)
+returns uuid
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  novo uuid;
+begin
+  insert into public.relatorios (paciente_id, dados)
+  values (pid, dados)
+  returning id into novo;
+
+  delete from public.relatorios
+   where paciente_id = pid and id is distinct from novo;
+
+  return novo;
+end;
+$$;
+
+revoke all on function public.publicar_relatorio(uuid, jsonb) from public;
+grant execute on function public.publicar_relatorio(uuid, jsonb) to authenticated;
+
+create table relatorio_acessos (
+  id            uuid primary key default gen_random_uuid(),
+  relatorio_id  uuid not null references relatorios(id) on delete cascade,
+  em            timestamptz not null default now()
+);
+
+create index relatorio_acessos_relatorio_em on relatorio_acessos (relatorio_id, em desc);
+
+alter table relatorio_acessos enable row level security;
+revoke all on table public.relatorio_acessos from anon, authenticated, public;
+
 -- O visitante não ganha policy nenhuma — ele entra por esta função, e é isso que impede
 -- listar a tabela inteira com a anon key. `security definer` ignora a RLS de propósito e só
 -- devolve a linha de um token válido e não expirado; token errado e token vencido dão o mesmo
--- `null`, então a página não revela se o link existe.
+-- `null`, então a página não revela se o link existe. Volatile porque grava o acesso.
 create function public.relatorio_publico(token uuid)
 returns jsonb
-language sql
+language plpgsql
 security definer
-stable
 set search_path = ''
 as $$
-  select r.dados from public.relatorios r
+declare
+  rid uuid;
+  payload jsonb;
+begin
+  select r.id, r.dados into rid, payload
+    from public.relatorios r
    where r.id = token and r.expira_em > now();
+  if rid is null then
+    return null;
+  end if;
+  insert into public.relatorio_acessos (relatorio_id) values (rid);
+  return payload;
+end;
 $$;
 
 revoke all on function public.relatorio_publico(uuid) from public;

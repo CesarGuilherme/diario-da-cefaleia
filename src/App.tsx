@@ -8,6 +8,7 @@ import { useDesktop } from './useDesktop.ts'
 import { BannerErro, Carregando, fundoAurora } from './ui.tsx'
 import Painel from './Painel.tsx'
 import Login, { RedefinirSenha } from './Login.tsx'
+import { emRecovery, marcarRecovery, limparRecovery, urlEhRecovery } from './sessao.ts'
 import NovaCrise from './screens/NovaCrise.tsx'
 import CriseAndamento from './screens/CriseAndamento.tsx'
 import Historico from './screens/Historico.tsx'
@@ -37,13 +38,26 @@ export type Casca = {
 export default function App() {
   // undefined = ainda carregando; null = deslogado
   const [sessao, setSessao] = useState<Session | null | undefined>(undefined)
-  const [recuperando, setRecuperando] = useState(false)
+  const [recuperando, setRecuperando] = useState(() => urlEhRecovery() || emRecovery())
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSessao(data.session))
+    // Não usar getSession() aqui: no landing do link ele devolve a sessão de recovery
+    // um tick antes de PASSWORD_RECOVERY e o Diario montaria com o JWT de reset.
     const { data: sub } = supabase.auth.onAuthStateChange((e, s) => {
-      if (e === 'PASSWORD_RECOVERY') setRecuperando(true)
-      if (e === 'SIGNED_OUT') setRecuperando(false)
+      const uid = s?.user.id
+      if (e === 'PASSWORD_RECOVERY') {
+        marcarRecovery(undefined, Date.now(), uid)
+        setRecuperando(true)
+      } else if (e === 'INITIAL_SESSION' && (urlEhRecovery() || emRecovery(undefined, Date.now(), uid))) {
+        if (uid) marcarRecovery(undefined, Date.now(), uid)
+        setRecuperando(true)
+      } else if (e === 'SIGNED_OUT') {
+        limparRecovery()
+        setRecuperando(false)
+      } else if (e === 'SIGNED_IN' && uid && !emRecovery(undefined, Date.now(), uid)) {
+        limparRecovery()
+        setRecuperando(false)
+      }
       setSessao(s)
     })
     return () => sub.subscription.unsubscribe()
@@ -54,7 +68,7 @@ export default function App() {
   if (faltaConfig) return <div style={fundo}><ErroConfig /></div>
   if (sessao === undefined) return <div style={fundo}><Carregando /></div>
   if (!sessao) return <div style={fundo}><Login /></div>
-  if (recuperando) return <div style={fundo}><RedefinirSenha onOk={() => setRecuperando(false)} /></div>
+  if (recuperando) return <div style={fundo}><RedefinirSenha onOk={() => { limparRecovery(); setRecuperando(false) }} /></div>
   // key no uid: trocar de conta sem passar por deslogado reaproveitaria os hooks e
   // mostraria o paciente do usuário anterior por um render (espelha .id(userId) no iOS).
   return <Diario key={sessao.user.id} user={sessao.user} />

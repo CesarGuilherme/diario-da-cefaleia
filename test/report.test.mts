@@ -42,11 +42,18 @@ test('insight avisa quando nenhum gatilho aparece', () => {
   assert.equal(analisar(semGatilho).insight, 'Ainda sem um gatilho dominante — continue registrando.')
 })
 
-test('estatísticas: 1/mês e 1h57', () => {
-  const { frequencia, duracaoMedia } = analisar(SEEDS)
-  assert.equal(frequencia, 1)
+test('estatísticas: dias com crise /mês no período, e 1h57', () => {
+  // Seeds: 23 e 27 jul + 1 e 5 ago. Até 5 ago isso é 2 dias em jul e 2 em ago → 2/mês.
+  // O n/3 antigo (chão em 1) mentia para o médico: 2 crises na vida viravam 1/mês.
+  const hoje = new Date(2025, 7, 5)
+  const { frequencia, duracaoMedia } = analisar(SEEDS, hoje)
+  assert.equal(frequencia, 2)
   assert.equal(duracaoMedia, 117) // (164+70+45+190)/4
   assert.equal(fmtDuracao(duracaoMedia), '1h57')
+})
+
+test('frequência é 0 sem crises — nunca inventa 1/mês', () => {
+  assert.equal(analisar([], new Date(2025, 7, 5)).frequencia, 0)
 })
 
 test('crise em andamento não entra na duração média', () => {
