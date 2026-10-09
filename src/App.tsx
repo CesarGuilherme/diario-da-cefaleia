@@ -66,12 +66,42 @@ export default function App() {
   const fundo = fundoAurora()
 
   if (faltaConfig) return <div style={fundo}><ErroConfig /></div>
-  if (sessao === undefined) return <div style={fundo}><Carregando /></div>
+  if (sessao === undefined) return <div style={fundo}><EsperaSessao /></div>
   if (!sessao) return <div style={fundo}><Login /></div>
   if (recuperando) return <div style={fundo}><RedefinirSenha onOk={() => { limparRecovery(); setRecuperando(false) }} /></div>
   // key no uid: trocar de conta sem passar por deslogado reaproveitaria os hooks e
   // mostraria o paciente do usuário anterior por um render (espelha .id(userId) no iOS).
   return <Diario key={sessao.user.id} user={sessao.user} />
+}
+
+const LIMITE_SESSAO_MS = 8000
+
+/** Sem resposta do Supabase (projeto pausado, rede caída) o GoTrue só desiste depois de
+ *  vários retries — a tela ficaria em "Carregando…" sem explicação. */
+function EsperaSessao() {
+  const [demorou, setDemorou] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => setDemorou(true), LIMITE_SESSAO_MS)
+    return () => clearTimeout(t)
+  }, [])
+  if (!demorou) return <Carregando />
+  return (
+    <div style={{ minHeight: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 16px', boxSizing: 'border-box' }}>
+      <div role="alert" style={{
+        maxWidth: 420, borderRadius: 26, padding: 22, textAlign: 'center',
+        background: 'rgba(255,69,58,.12)', border: '.5px solid rgba(255,69,58,.3)',
+      }}>
+        <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Não consegui falar com o servidor</div>
+        <div style={{ fontSize: 14, lineHeight: 1.5, color: 'rgba(235,235,245,.7)', marginBottom: 16 }}>
+          Verifique sua conexão. Se continuar, o serviço pode estar indisponível.
+        </div>
+        <button onClick={() => location.reload()} style={{
+          padding: '10px 20px', borderRadius: 999, border: 0, cursor: 'pointer',
+          background: 'rgba(255,255,255,.14)', color: '#fff', fontSize: 15, fontWeight: 600,
+        }}>Tentar de novo</button>
+      </div>
+    </div>
+  )
 }
 
 function ErroConfig() {
