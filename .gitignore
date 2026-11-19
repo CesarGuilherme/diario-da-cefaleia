@@ -6,3 +6,9 @@ dist
 .env
 client_secret_*.json
 supabase/.temp
+
+# Dumps/backups do banco e do storage (dados reais) — nunca no repo
+db_cluster*
+*.backup
+*.backup.gz
+*.storage.zip
